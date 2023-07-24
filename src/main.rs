@@ -18,15 +18,16 @@ impl Board {
     }
     fn get_valid(self) {
         for row in 0..8 {
+            let mut index: i32 = row * 8;
             for col in 0..8 {
-                let index: i32 = row * 8 + col;
                 let mask: u64 = 1 << index;
                 if self.black & mask == 0 && self.white & mask == 0 {
-
+                    
                     for shift in [-9, -8, -7, -1, 1, 7, 8, 9].iter() {
-
+                        
                     }
                 }
+                index += 1;
             }
         }
     }
@@ -39,8 +40,8 @@ mod cui_test {
     pub fn print_board(board: &Board){
         println!("black: {}\nwhite: {}", board.black_pieces_count, board.white_pieces_count);
         for row in 0..8 {
+            let mut index: i32 = row * 8;
             for col in 0..8 {
-                let index: i32 = row * 8 + col;
                 let mask: u64 = 1 << index;
                 let value: char = 
                 if board.black & mask != 0 {
@@ -50,8 +51,8 @@ mod cui_test {
                 } else {
                     '.'
                 };
-
                 print!("{} ", value);
+                index += 1;
             }
             println!();
         }
