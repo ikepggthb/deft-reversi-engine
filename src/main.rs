@@ -36,7 +36,10 @@ impl Board {
 mod cui_test {
 
     use crate::Board;
-
+    use termion::*;
+    use std::io::{Write, stdout, stdin};
+    use termion::input::TermRead;
+    use termion::raw::IntoRawMode;
     pub fn print_board(board: &Board){
         println!("black: {}\nwhite: {}", board.black_pieces_count, board.white_pieces_count);
         for row in 0..8 {
@@ -57,10 +60,29 @@ mod cui_test {
             println!();
         }
     }
+    pub fn start(){
+        let board = Board::new();
+        let mut count = 0; 
+        let mut input = String::new();
+        loop {
+            input.clear();
+            print_board(&board);
+            stdin().read_line(&mut input).expect("Faild!");
+            let inputed_char = input.trim().chars().next().unwrap();
+
+            match stdin.keys() {
+                'w' => (),
+                'a' => (),
+                's' => (),
+                'd' => (),
+                'q' => return,
+                 x => println!("inputed: {}", x),
+            }
+        }
+    }
 }
 
 
 fn main() {
-    let b = Board::new();
-    cui_test::print_board(&b);
+    cui_test::start();
 }
