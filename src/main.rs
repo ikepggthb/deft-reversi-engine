@@ -2,27 +2,25 @@
 #[derive(Debug)]
 
 pub struct Board {
-    black: u64,
-    white: u64,
+    bit_board: [u64; 2],
     black_pieces_count: usize,
     white_pieces_count: usize,
-    turns: u32
+    turns: usize
 }
 
 
 impl Board {
 
     const BOARD_SIZE: i32 = 8;
-    const BLACK_TURN: u32 = 0;
-    const WHITE_TURN: u32 = 1;
+    const BLACK_TURN: usize = 0;
+    const WHITE_TURN: usize = 1;
 
     fn new() -> Self {
         Board {
-            black: 0x0000000810000000u64,
-            white: 0x0000001008000000u64,
+            bit_board: [0x0000000810000000u64,0x0000001008000000u64],
             black_pieces_count: 2usize,
             white_pieces_count: 2usize,
-            turns: 0
+            turns: Board::BLACK_TURN
         }
     }
 
@@ -31,14 +29,9 @@ impl Board {
         let mask = 1 << y * Board::BOARD_SIZE + x;
 
         if self.put_able() & mask == 0 {
-            println!("そこには置けません！");
             return;
         }
-        if self.turns == Board::BLACK_TURN {
-            self.black |= mask;
-        }else {
-            self.white |= mask;
-        }
+        self.bit_board[self.turns] |= mask;
         self.reverse_piece(mask);
         self.turns = self.turns ^ 1;   
     }
@@ -51,16 +44,8 @@ impl Board {
             0x007e7e7e7e7e7e00, // 斜め
             0x007e7e7e7e7e7e00, // 斜め
         ];
-
-        let player_board: u64;
-        let opponent_board: u64;
-        if self.turns == Board::BLACK_TURN {
-            player_board = self.black;
-            opponent_board = self.white;
-        }else {
-            player_board = self.white;
-            opponent_board = self.black;
-        }
+        let player_board: u64 = self.bit_board[self.turns];
+        let opponent_board: u64 = self.bit_board[self.turns ^ 1];
 
         let mut reverse_board = 0u64;
         for (&direction, &mask) in directions.iter().zip(&masks) {
@@ -86,13 +71,13 @@ impl Board {
             }
         }
         
-        self.white ^= reverse_board;
-        self.black ^= reverse_board;
+        self.bit_board[0] ^= reverse_board;
+        self.bit_board[1] ^= reverse_board;
     }
 
     #[inline]
     fn put_able(&self) -> u64{
-        let blank = !(self.black | self.white);
+        let blank = !(self.bit_board[0] | self.bit_board[1]);
 
         let directions: [i32; 4] = [1, 8, 7, 9];
         let masks: [u64; 4] = [
@@ -101,26 +86,20 @@ impl Board {
             0x007e7e7e7e7e7e00, // 斜め
             0x007e7e7e7e7e7e00, // 斜め
         ];
-
-        let player_board: u64;
-        let opponent_board: u64;
-        if self.turns == Board::BLACK_TURN {
-            player_board = self.black;
-            opponent_board = self.white;
-        }else {
-            player_board = self.white;
-            opponent_board = self.black;
-        }
+        let player_board: u64 = self.bit_board[self.turns];
+        let opponent_board: u64 = self.bit_board[self.turns ^ 1];
 
         let mut legal_moves = 0u64;
         for (direction, mask) in directions.iter().zip(&masks) {
             let mut flipped_positions =  (player_board << *direction) & *mask & opponent_board;
-            for _ in 0..5 { // 5回の反復で8マス全てをカバーできます。
+            for _ in 0..5 { 
                 flipped_positions |=  (flipped_positions << *direction) & *mask & opponent_board;
             }
             legal_moves |=  (flipped_positions << *direction) & blank;
+            
+            // 逆方向
             let mut flipped_positions =  (player_board >> *direction) & *mask & opponent_board;
-            for _ in 0..5 { // 5回の反復で8マス全てをカバーできます。
+            for _ in 0..5 {
                 flipped_positions |=  (flipped_positions >> *direction) & *mask & opponent_board;
             }
             legal_moves |=  (flipped_positions >> *direction) & blank;
@@ -135,63 +114,108 @@ impl Board {
 
 mod cui_test {
 
+
     use crate::Board;
     use std::io::stdin;
 
-    pub fn print_board(board: &Board, y_now: i32, x_now: i32){
-        println!("black: {}\nwhite: {}", board.black_pieces_count, board.white_pieces_count);
+
+    pub fn print_board(board: &Board, y_now: i32, x_now: i32, stdout: &mut AlternateScreen<raw::RawTerminal<std::io::Stdout>>) -> std::io::Result<()>{
+        write!(stdout, "{}", clear::All)?;
+        write!(stdout, "{}", cursor::Goto(1, 1))?;
+        write!(stdout, "black: {}\n", board.black_pieces_count)?;
+        write!(stdout, "{}", cursor::Goto(1, 2))?;
+        write!(stdout, "white: {}\n", board.white_pieces_count)?;
+        write!(stdout, "{}", cursor::Goto(1, 3))?;
         for y in 0..8 {
             for x in 0..8 {
                 let value: char = {
                     if y == y_now && x == x_now {'*'}
-                        else {
+                    else {
                         let mask: u64 = 1 << y * 8 + x;
                         let put_able_bit = board.put_able();
-
+                        
                         if put_able_bit & mask != 0 {'#'}
-                        else if board.black & mask != 0 {'x'}
-                        else if board.white & mask != 0 {'o'}
+                        else if board.bit_board[0] & mask != 0 {'x'}
+                        else if board.bit_board[1] & mask != 0 {'o'}
                         else {'.'}
                     }
                 };
-                print!("{} ", value);
+                write!(stdout, "{} ", value)?;
             }
-            println!();
+
+            write!(stdout, "\n")?;
+            write!(stdout, "{}", cursor::Goto(1, y as u16 +4))?;
+            
         }
+        stdout.flush()?;
+        Ok(())
     }
 
-    fn input_operation() -> char {
-        let mut input = String::new();
-        loop {
-            stdin().read_line(&mut input).expect("Faild!");
-            match input.trim().chars().next() {
-                Some(inputed_char) => return inputed_char,
-                None => input.clear()
-            }
-        }
-    }
-    
-    pub fn start(){
+    extern crate termion;
+
+    use std::io::{stdout, Write};
+    use termion::*;
+    use termion::event::{Event, Key};
+    use termion::input::TermRead;
+    use termion::raw::IntoRawMode;
+    use termion::screen::AlternateScreen;
+    pub fn start() -> std::io::Result<()>{
+        // if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+        //     println!("{:?}", code);
+        // }
+        let mut stdin = stdin();
+        let mut stdout = 
+            AlternateScreen::from( stdout().into_raw_mode().unwrap());
+        write!(stdout, "{}", clear::All)?;
+        write!(stdout, "{}", cursor::Goto(1, 1))?;
+
+
+
+        write!(stdout, "Hello World!")?;
+        stdout.flush()?;
+
         let mut board = Board::new();
         let (mut y_now, mut x_now): (i32, i32) = (0, 0);
-        loop {
-            print_board(&board, y_now, x_now);
-            match input_operation() {
-                'w' => if y_now == 0 {y_now = 7} else {y_now-=1},
-                'a' => if x_now == 0 {x_now = 7} else {x_now-=1},
-                's' => if y_now == 7 {y_now = 0} else {y_now+=1},
-                'd' => if x_now == 7 {x_now = 0} else {x_now+=1},
-                'x' => board.put_piece(y_now, x_now),
-                'q' => return,
-                'e' => return,
-                _ => (),
-            }
+        print_board(&board, y_now, x_now, &mut stdout);
 
+        for evt in stdin.events() {
+            match evt.unwrap() {
+                // Ctrl-cでプログラム終了
+                Event::Key(Key::Ctrl('c')) =>  {
+                    return Ok(());
+                }
+                Event::Key(Key::Char(key_char)) => {
+                    match key_char {
+                        'w' => if y_now == 0 {y_now = 7} else {y_now-=1},
+                        'a' => if x_now == 0 {x_now = 7} else {x_now-=1},
+                        's' => if y_now == 7 {y_now = 0} else {y_now+=1},
+                        'd' => if x_now == 7 {x_now = 0} else {x_now+=1},
+                        'x' => board.put_piece(y_now, x_now),
+                        'q' => return Ok(()),
+                        _ => ()
+                    }
+                }
+                _ => ()
+            }
+            print_board(&board, y_now, x_now, &mut stdout);
         }
+        // loop {
+        //     print_board(&board, y_now, x_now);
+        //     match input_operation() {
+        //         'q' => return,
+        //         'e' => return,
+        //         _ => (),
+        //     }
+
+        // }
+
+
+        Ok(())
     }
+
 }
 
-fn main() {
-    cui_test::start();
-
+fn main() -> std::io::Result<()> {
+    cui_test::start()?;
+    Ok(())
 }
