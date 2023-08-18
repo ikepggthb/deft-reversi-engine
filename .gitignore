@@ -1,1 +1,3 @@
 /target
+stderr.log
+Cargo.lock
