@@ -38,15 +38,16 @@ fn init_terminal(output: &mut TermOut) -> std::io::Result<()> {
 
 pub fn start() -> std::io::Result<()>{
 
-    let stdin = stdin();
+    let mut stdin: std::io::Stdin = stdin();
     let mut output = 
         AlternateScreen::from( stdout().into_raw_mode().unwrap());
         
     init_terminal(&mut output)?;
+    title_screen(&mut output, &mut stdin);
     
     let mut board = Board::new();
     let mut board_cursor = BoardCursor::new();
-    print_board(&board, board_cursor.y, board_cursor.x, &mut output)?;
+    //print_board(&board, board_cursor.y, board_cursor.x, &mut output)?;
     
     
 
@@ -80,6 +81,70 @@ pub fn start() -> std::io::Result<()>{
 
     Ok(())
 }
+
+
+enum TitleScreenOption {
+    Start,
+    Exit,
+    None
+}
+
+const TITLE: &str = "Deft Reversi";
+
+fn title_screen(output: &mut TermOut, input: &mut std::io::Stdin)-> std::io::Result<()>{
+    init_terminal(output)?;
+    print_title_screen(output, input)?;
+
+    Ok(())
+}
+
+struct TitleScreenObject {
+    name: String,
+    x: i32,
+    y: i32,
+    label : String,
+    option: TitleScreenOption
+}
+
+fn print_title_screen(output: &mut TermOut, input: &mut std::io::Stdin)-> std::io::Result<()>{
+    let title_label = TitleScreenObject {
+        name: "title label".to_string(),
+        x: 1,
+        y: 1,
+        label: TITLE.to_string(),
+        option: TitleScreenOption::None
+    };
+    let game_start_button = TitleScreenObject {
+        name: "start button".to_string(),
+        x: 1,
+        y: 3,
+        label: "Game Start".to_string(),
+        option: TitleScreenOption::Start
+    };
+    let exit_button = TitleScreenObject {
+        name: "exit button".to_string(),
+        x: 1,
+        y: 5,
+        label: "Exit".to_string(),
+        option: TitleScreenOption::Exit
+    };
+
+    let title_object = [&title_label, &game_start_button, &exit_button];
+
+    for x in 0..8 {
+        for y in 0..8 {
+            for ob in title_object {
+                if ob.x == x && ob.y == y {
+                    write!(output, "{}", ob.label)?;
+                }
+            }
+        }
+    }
+    output.flush()?;
+    
+    Ok(())
+}
+
 
 pub fn print_board(board: &Board, y_now: i32, x_now: i32, output: &mut TermOut) -> std::io::Result<()>{
     init_terminal(output)?;
@@ -118,41 +183,9 @@ pub fn print_board(board: &Board, y_now: i32, x_now: i32, output: &mut TermOut) 
 }
 
 
-//---
-
-
-use bevy::prelude::*;
-
-
-fn hello_world() {
-    println!("Hello world!");
-}
-
-#[derive(Component)]
-struct  Person;
-
-
-#[derive(Component)]
-struct Name(String);
-
-fn add_people(mut commands: Commands){
-    commands.spawn((Person, Name("a".to_string())));
-    commands.spawn((Person, Name("b".to_string())));
-}
-
-fn greet_people(query: Query<&Name, With<Person>>) {
-    for name in &query {
-        println!("hello {}!", name.0);
-    }
-}
-
 
 fn main() -> std::io::Result<()> {
-    //start()?;
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .run();
-
+    start();
     Ok(())
 }
 
