@@ -1,6 +1,5 @@
 extern crate termion;
 use std::io::{stdout, Write, stdin};
-use bevy::transform::commands;
 use termion::*;
 use termion::event::{Event, Key};
 use termion::input::TermRead;
