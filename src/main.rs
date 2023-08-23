@@ -8,8 +8,119 @@ use termion::screen::AlternateScreen;
 
 mod board;
 use board::*;
-
 type TermOut = AlternateScreen<raw::RawTerminal<std::io::Stdout>>;
+
+fn init_terminal(output: &mut TermOut) -> std::io::Result<()> {
+    write!(output, "{}{}", clear::All, cursor::Goto(1, 1))?;
+    output.flush()?;
+    Ok(())
+}
+
+// ----------  title_screen  ----------------
+
+#[derive(Clone)]
+enum TitleScreenOption {
+    Start,
+    Exit,
+    None
+}
+
+const TITLE: &str = "Deft Reversi";
+
+#[allow(dead_code)]
+struct TitleScreenObject {
+    name: String,
+    x: i32,
+    y: i32,
+    label : String,
+    option: TitleScreenOption
+}
+
+fn title_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Result<TitleScreenOption> {
+
+    let title_label = TitleScreenObject {
+        name: "title label".to_string(),
+        x: 1,
+        y: 1,
+        label: TITLE.to_string(),
+        option: TitleScreenOption::None
+    };
+    let game_start_button = TitleScreenObject {
+        name: "start button".to_string(),
+        x: 1,
+        y: 3,
+        label: "Game Start".to_string(),
+        option: TitleScreenOption::Start
+    };
+    let exit_button = TitleScreenObject {
+        name: "exit button".to_string(),
+        x: 4,
+        y: 5,
+        label: "Exit".to_string(),
+        option: TitleScreenOption::Exit
+    };
+
+    let title_object = [&title_label, &game_start_button, &exit_button];
+    let mut title_cursor = 0i32;
+
+    print_title_screen(output, &title_object, title_cursor)?;
+    for evt in input.events() {
+        match evt? {
+            // Ctrl-cでプログラム終了
+            Event::Key(Key::Ctrl('c')) | Event::Key(Key::Char('q')) =>  {
+                return Ok(TitleScreenOption::Exit);
+            }
+            Event::Key(Key::Char('\r')) | Event::Key(Key::Char('\n')) =>  { // Enter Key
+                if let TitleScreenOption::None = title_object[title_cursor as usize].option{
+                    continue;
+                }
+                return Ok(title_object[title_cursor as usize].option.clone());
+            }
+            Event::Key(Key::Char(key_char)) => {
+                match key_char {
+                    'w' | 'a' => title_cursor-=1,
+                    's' | 'd' => title_cursor+=1,
+                    _ => ()
+                }
+                while title_cursor < 0 {
+                    title_cursor += title_object.len() as i32;
+                }
+                title_cursor = title_cursor % title_object.len() as i32;
+                print_title_screen(output, &title_object, title_cursor)?;
+            }
+            _ => ()
+        }
+    }
+
+    Ok(TitleScreenOption::Exit)
+}
+
+fn print_title_screen(output: &mut TermOut, title_object: &[&TitleScreenObject], title_cursor: i32 )-> std::io::Result<()>{
+    init_terminal(output)?;
+
+    for y in 0..8 {
+        for x in 0..8 {
+            write!(output, " ")?;
+            for (i,ob) in title_object.iter().enumerate() {
+                if ob.x == x && ob.y == y {
+                    write!(output, "{}", ob.label)?;
+                    if title_cursor  as usize == i {
+                        write!(output, "  <-")?;
+                    }
+                }
+                
+            }
+        }
+        write!(output, "\n")?;
+        write!(output, "{}", cursor::Goto(1, y as u16 + 1))?;
+    }
+    output.flush()?;
+    
+    Ok(())
+}
+
+// ----------  game_board  ----------------
+
 struct BoardCursor {
     x: i32,y: i32
 }
@@ -29,29 +140,13 @@ impl BoardCursor {
     }
 }
 
-fn init_terminal(output: &mut TermOut) -> std::io::Result<()> {
-    write!(output, "{}{}", clear::All, cursor::Goto(1, 1))?;
-    output.flush()?;
-    Ok(())
-}
-
-pub fn start() -> std::io::Result<()>{
-
-    let mut stdin: std::io::Stdin = stdin();
-    let mut output = 
-        AlternateScreen::from( stdout().into_raw_mode().unwrap());
-        
-    init_terminal(&mut output)?;
-    title_screen(&mut output, &mut stdin);
-    
+fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Result<()> {
+    init_terminal(output)?;
     let mut board = Board::new();
     let mut board_cursor = BoardCursor::new();
-    //print_board(&board, board_cursor.y, board_cursor.x, &mut output)?;
-    
-    
 
-
-    for evt in stdin.events() {
+    print_board(&board, board_cursor.y, board_cursor.x, output)?;
+    for evt in input.events() {
         match evt? {
             // Ctrl-cでプログラム終了
             Event::Key(Key::Ctrl('c')) =>  {
@@ -63,87 +158,26 @@ pub fn start() -> std::io::Result<()>{
                     'a' => board_cursor.left(),
                     's' => board_cursor.down(),
                     'd' => board_cursor.right(),
-                    'z' => {board.put_eval_one_simple();},
-                    'x' => {board.put_eval_zero_simple();},
-                    'c' => {board.put_random_piece();},
-                    'v' => {board.put_piece_from_coord(board_cursor.y, board_cursor.x);},
+                    'x' => {
+                        let result_put = board.put_piece_from_coord(board_cursor.y, board_cursor.x);
+                        if result_put.is_ok(){
+                            if let Err(PutPieceErr::NoValidPlacement) = board.put_eval_one_simple() {
+                                board.turns ^= 1;
+                            }
+                        }
+                    },
                     'p' => board.turns ^= 1,    
                     //{board.put_piece_from_coord(board_cursor.y, board_cursor.x);},//
                     'q' => return Ok(()),
                     _ => ()
                 }
-                print_board(&board, board_cursor.y, board_cursor.x, &mut output)?;
+                print_board(&board, board_cursor.y, board_cursor.x, output)?;
             }
             _ => ()
         }
     }
-
     Ok(())
 }
-
-
-enum TitleScreenOption {
-    Start,
-    Exit,
-    None
-}
-
-const TITLE: &str = "Deft Reversi";
-
-fn title_screen(output: &mut TermOut, input: &mut std::io::Stdin)-> std::io::Result<()>{
-    init_terminal(output)?;
-    print_title_screen(output, input)?;
-
-    Ok(())
-}
-
-struct TitleScreenObject {
-    name: String,
-    x: i32,
-    y: i32,
-    label : String,
-    option: TitleScreenOption
-}
-
-fn print_title_screen(output: &mut TermOut, input: &mut std::io::Stdin)-> std::io::Result<()>{
-    let title_label = TitleScreenObject {
-        name: "title label".to_string(),
-        x: 1,
-        y: 1,
-        label: TITLE.to_string(),
-        option: TitleScreenOption::None
-    };
-    let game_start_button = TitleScreenObject {
-        name: "start button".to_string(),
-        x: 1,
-        y: 3,
-        label: "Game Start".to_string(),
-        option: TitleScreenOption::Start
-    };
-    let exit_button = TitleScreenObject {
-        name: "exit button".to_string(),
-        x: 1,
-        y: 5,
-        label: "Exit".to_string(),
-        option: TitleScreenOption::Exit
-    };
-
-    let title_object = [&title_label, &game_start_button, &exit_button];
-
-    for x in 0..8 {
-        for y in 0..8 {
-            for ob in title_object {
-                if ob.x == x && ob.y == y {
-                    write!(output, "{}", ob.label)?;
-                }
-            }
-        }
-    }
-    output.flush()?;
-    
-    Ok(())
-}
-
 
 pub fn print_board(board: &Board, y_now: i32, x_now: i32, output: &mut TermOut) -> std::io::Result<()>{
     init_terminal(output)?;
@@ -182,9 +216,29 @@ pub fn print_board(board: &Board, y_now: i32, x_now: i32, output: &mut TermOut) 
 }
 
 
+pub fn start() -> std::io::Result<()>{
+    
+    let mut stdin: std::io::Stdin = stdin();
+    let mut output = 
+    AlternateScreen::from( stdout().into_raw_mode().unwrap());
 
-fn main() -> std::io::Result<()> {
-    start();
+    let title_screen_option = title_screen(&mut output, &mut stdin)?;
+    match title_screen_option {
+        TitleScreenOption::Start => {
+            game_screen(&mut output, &mut stdin)?;
+        },
+        TitleScreenOption::Exit => {
+            return Ok(());
+        },
+        _ => {
+            return Ok(());
+        }
+    }
+
     Ok(())
 }
 
+fn main() -> std::io::Result<()> {
+    start()?;
+    Ok(())
+}
