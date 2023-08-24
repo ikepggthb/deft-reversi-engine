@@ -3,8 +3,6 @@ use rand::Rng;
 #[derive(Clone)]
 pub struct Board {
     pub bit_board: [u64; 2],
-    pub black_pieces_count: usize,
-    pub white_pieces_count: usize,
     pub turns: usize
 }
 
@@ -16,24 +14,71 @@ pub enum PutPieceErr {
 impl Board {
 
     const BOARD_SIZE: i32 = 8;
-    const BLACK: usize = 0;
-    const WHITE: usize = 1;
+    pub const BLACK: usize = 0;
+    pub const WHITE: usize = 1;
 
     pub fn new() -> Self {
         Board {
             bit_board: [0x0000000810000000u64,0x0000001008000000u64],
-            black_pieces_count: 2usize,
-            white_pieces_count: 2usize,
             turns: Board::BLACK
         }
     }
 
     pub fn clear(&mut self) {
         self.bit_board = [0x0000000810000000u64,0x0000001008000000u64];
-        self.black_pieces_count = 2usize;
-        self.white_pieces_count = 2usize;
         self.turns = Board::BLACK;
     }
+
+    pub fn end_game_full_solver(&self) -> u64{
+        let mut moves = self.put_able();
+        if moves == 0 {
+            return 0;
+        }
+
+        let dfs = |first_board: Board, now_turns: usize| -> i32{
+
+            let mut min_score = 64;
+
+            let mut stack: Vec<Board> = Vec::new();
+            stack.push(first_board);
+
+            while let Some(mut board) = stack.pop() {
+                let mut moves = board.put_able();
+                if moves == 0 {
+                    board.turns ^= 1;
+                    moves = board.put_able();
+                    if moves == 0 {
+                        min_score = min_score.min(board.bit_board[now_turns].count_ones() as i32 - board.bit_board[now_turns ^ 1].count_ones() as i32);
+                    }
+                }
+                while  moves != 0 {
+                    let mut virt_board = board.clone();
+                    let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+                    moves &= moves - 1; // 最も小さい位のbitを消す
+                    virt_board.put_piece(put_place);
+                    stack.push(virt_board);
+                }
+            }
+            min_score
+        };
+
+        let mut max_score = -64;
+        let mut max_score_move = 0u64;
+        while  moves != 0 {
+            let mut virt_board = self.clone();
+            let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+            moves &= moves - 1; // 最も小さい位のbitを消す
+            virt_board.put_piece(put_place);
+            let this_score = dfs(virt_board.clone(), self.turns);
+            if this_score > max_score {
+                max_score = this_score;
+                max_score_move = put_place;
+            }
+
+        }
+        eprintln!("full solver: {}", max_score);
+        max_score_move
+    } 
 
     pub fn put_random_piece(&mut self) -> Result<(), PutPieceErr> {
         let legal_moves = self.put_able();
@@ -154,7 +199,7 @@ impl Board {
     }
 
     #[inline]
-    fn put_piece(&mut self, put_mask: u64) -> Result<(), PutPieceErr> {
+    pub fn put_piece(&mut self, put_mask: u64) -> Result<(), PutPieceErr> {
         if self.put_able() & put_mask == 0 {
             return Err(PutPieceErr::NoValidPlacement);
         }

@@ -145,6 +145,44 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
     let mut board = Board::new();
     let mut board_cursor = BoardCursor::new();
 
+    let is_end = |board: &mut Board| -> bool {
+        let is_now_pass =  if board.put_able() == 0 {true} else {false}; 
+        board.turns ^= 1;
+        let is_next_pass = if board.put_able() == 0 {true} else {false};
+        board.turns ^= 1;
+        is_now_pass && is_next_pass
+    };
+
+    let put = |board: &mut Board, y: i32, x: i32| {
+        if is_end(board) {
+            eprintln!("End!");
+            return;
+        }
+        if board.put_able() == 0 {
+            eprintln!("pass");
+            board.turns ^= 1;
+        }
+        if board.turns == Board::BLACK {
+            //let re_put = board.put_eval_one_simple();
+            let re_put = board.put_piece_from_coord(y, x);
+            if let Err(PutPieceErr::NoValidPlacement) = re_put {
+                eprintln!("Err!");
+                return;
+            }
+        } else {
+            let re_put;
+            if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() > 51 {
+                re_put = board.put_piece(board.end_game_full_solver());
+            } else {
+                re_put = board.put_eval_one_simple();
+            }
+            if let Err(PutPieceErr::NoValidPlacement) = re_put {
+                eprintln!("Err!");
+                return;
+            }
+        }
+
+    };
     print_board(&board, board_cursor.y, board_cursor.x, output)?;
     for evt in input.events() {
         match evt? {
@@ -159,15 +197,10 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
                     's' => board_cursor.down(),
                     'd' => board_cursor.right(),
                     'x' => {
-                        let result_put = board.put_piece_from_coord(board_cursor.y, board_cursor.x);
-                        if result_put.is_ok(){
-                            if let Err(PutPieceErr::NoValidPlacement) = board.put_eval_one_simple() {
-                                board.turns ^= 1;
-                            }
-                        }
+                        write!(output, "\nsolveing...\n")?;
+                        put(&mut board, board_cursor.y, board_cursor.x);
                     },
-                    'p' => board.turns ^= 1,    
-                    //{board.put_piece_from_coord(board_cursor.y, board_cursor.x);},//
+                    'p' => board.turns ^= 1,
                     'q' => return Ok(()),
                     _ => ()
                 }
@@ -181,10 +214,10 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
 
 pub fn print_board(board: &Board, y_now: i32, x_now: i32, output: &mut TermOut) -> std::io::Result<()>{
     init_terminal(output)?;
-    write!(output, "black: {}\n", board.black_pieces_count)?;
+    write!(output, "black: {}\n", board.bit_board[Board::BLACK].count_ones())?;
 
     write!(output, "{}", cursor::Goto(1, 2))?;
-    write!(output, "white: {}\n", board.white_pieces_count)?;
+    write!(output, "white: {}\n", board.bit_board[Board::WHITE].count_ones())?;
 
     write!(output, "{}", cursor::Goto(1, 3))?;
     for y in 0..8 {

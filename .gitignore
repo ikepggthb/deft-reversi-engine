@@ -1,3 +1,4 @@
 /target
 stderr.log
 Cargo.lock
+log.txt
