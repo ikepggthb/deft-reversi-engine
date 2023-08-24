@@ -164,17 +164,17 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
         }
         if board.next_turn == Board::BLACK {
             //let re_put = board.put_eval_one_simple();
-            let re_put = board.put_eval_zero_simple();//board.put_piece_from_coord(y, x);
+            let re_put = board.put_eval_one_simple();//board.put_piece_from_coord(y, x);
             if let Err(PutPieceErr::NoValidPlacement) = re_put {
                 eprintln!("Err!");
                 return;
             }
         } else {
             let re_put;
-            if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() > 48 {
-                re_put = board.put_piece(board.end_game_full_solver());
+            if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() > 50 {
+                re_put = board.put_piece(board.end_game_full_solver_negamax());
             } else {
-                re_put = board.put_eval_one_simple();
+                re_put = board.put_eval_zero_simple();
             }
             if let Err(PutPieceErr::NoValidPlacement) = re_put {
                 eprintln!("Err!");

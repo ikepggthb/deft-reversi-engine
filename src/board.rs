@@ -79,30 +79,72 @@ impl Board {
         eprintln!("full solver: {}", max_score);
         max_score_move
     } 
-
-    pub fn end_game_full_solver_negamax(&mut self, my_turn: usize) -> i32{
-        
+    pub fn end_game_full_solver_negamax(&self) -> u64{
         let mut moves = self.put_able();
         if moves == 0 {
-            self.next_turn ^= 1;
-            let is_end = self.put_able() == 0;
-            self.next_turn ^= 1;
-            if is_end {
-                return self.bit_board[self.next_turn ^ 1].count_ones() as i32 - self.bit_board[self.next_turn].count_ones() as i32;
+            return 0;
+        }
+        let mut max_score = -64;
+        let mut max_score_move = 0u64;
+        
+        eprintln!("my_turn: {}", self.next_turn);
+        while  moves != 0 {
+            let mut virt_board = self.clone();
+            let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+            moves &= moves - 1; // 最も小さい位のbitを消す
+            virt_board.put_piece(put_place);
+            let this_score = virt_board.negamax(self.next_turn, false);
+            eprintln!("this_score: {}",this_score );
+            if this_score > max_score {
+                max_score = this_score;
+                max_score_move = put_place;
             }
         }
-        let mut best_score = -64;
+        eprintln!("full solver: {}", max_score);
+        max_score_move
+    } 
+
+    pub fn negamax(&mut self, my_turn: usize, passed: bool) -> i32{
+        
+        // let mut moves = self.put_able();
+        // if moves == 0 {
+            
+        //     self.next_turn ^= 1; // pass
+        //     moves = self.put_able();
+        //     let is_end = moves == 0; // passしても置くところがなければ、終了
+        //     self.next_turn ^= 1; // pass
+        //     if is_end {
+        //         return self.bit_board[my_turn ^ 1].count_ones() as i32 - self.bit_board[my_turn].count_ones() as i32;
+        //     }
+            
+        //     let mut board = self.clone();
+        //     board.next_turn ^= 1;
+        //     return - board.negamax(my_turn);
+        // }
+
+        let mut moves = self.put_able();
+        let mut best_score = i32::MIN;
 
         while moves != 0 {
             let mut board = self.clone();
             let put_place = (!moves + 1) & moves;
             moves &= moves - 1;
             board.put_piece(put_place);
-            let score = board.end_game_full_solver_negamax(my_turn);
-            if board.next_turn == my_turn {
-
-            }
+            let score = - board.negamax(my_turn, false);
             best_score = best_score.max(score);
+        }
+
+        if best_score == i32::MIN {
+            if passed {
+                return if self.next_turn == Board::WHITE { // now: Black
+                    self.bit_board[Board::BLACK].count_ones() as i32 - self.bit_board[Board::WHITE].count_ones() as i32
+                } else {
+                    self.bit_board[Board::WHITE].count_ones() as i32 - self.bit_board[Board::BLACK].count_ones() as i32
+                };
+                //return  self.bit_board[my_turn].count_ones() as i32 - self.bit_board[my_turn ^ 1].count_ones() as i32;
+            }
+            self.next_turn ^= 1;
+            return - self.negamax(my_turn, true);
         }
 
         best_score
