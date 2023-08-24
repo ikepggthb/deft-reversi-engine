@@ -147,9 +147,9 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
 
     let is_end = |board: &mut Board| -> bool {
         let is_now_pass =  if board.put_able() == 0 {true} else {false}; 
-        board.turns ^= 1;
+        board.next_turn ^= 1;
         let is_next_pass = if board.put_able() == 0 {true} else {false};
-        board.turns ^= 1;
+        board.next_turn ^= 1;
         is_now_pass && is_next_pass
     };
 
@@ -160,18 +160,18 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
         }
         if board.put_able() == 0 {
             eprintln!("pass");
-            board.turns ^= 1;
+            board.next_turn ^= 1;
         }
-        if board.turns == Board::BLACK {
+        if board.next_turn == Board::BLACK {
             //let re_put = board.put_eval_one_simple();
-            let re_put = board.put_random_piece();//board.put_piece_from_coord(y, x);
+            let re_put = board.put_eval_zero_simple();//board.put_piece_from_coord(y, x);
             if let Err(PutPieceErr::NoValidPlacement) = re_put {
                 eprintln!("Err!");
                 return;
             }
         } else {
             let re_put;
-            if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() > 50 {
+            if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() > 48 {
                 re_put = board.put_piece(board.end_game_full_solver());
             } else {
                 re_put = board.put_eval_one_simple();
@@ -200,7 +200,7 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
                         write!(output, "\nsolveing...\n")?;
                         put(&mut board, board_cursor.y, board_cursor.x);
                     },
-                    'p' => board.turns ^= 1,
+                    'p' => board.next_turn ^= 1,
                     'q' => return Ok(()),
                     _ => ()
                 }
@@ -242,7 +242,7 @@ pub fn print_board(board: &Board, y_now: i32, x_now: i32, output: &mut TermOut) 
         
     }
     write!(output, "{}", cursor::Goto(1, 13))?;
-    write!(output, "{} turn", if board.turns == 0 {"Black"} else {"White"})?;
+    write!(output, "{} turn", if board.next_turn == 0 {"Black"} else {"White"})?;
 
     output.flush()?;
     Ok(())

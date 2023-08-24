@@ -3,7 +3,7 @@ use rand::Rng;
 #[derive(Clone)]
 pub struct Board {
     pub bit_board: [u64; 2],
-    pub turns: usize
+    pub next_turn: usize
 }
 
 pub enum PutPieceErr {
@@ -20,13 +20,13 @@ impl Board {
     pub fn new() -> Self {
         Board {
             bit_board: [0x0000000810000000u64,0x0000001008000000u64],
-            turns: Board::BLACK
+            next_turn: Board::BLACK
         }
     }
 
     pub fn clear(&mut self) {
         self.bit_board = [0x0000000810000000u64,0x0000001008000000u64];
-        self.turns = Board::BLACK;
+        self.next_turn = Board::BLACK;
     }
 
     pub fn end_game_full_solver(&self) -> u64{
@@ -45,7 +45,7 @@ impl Board {
             while let Some(mut board) = stack.pop() {
                 let mut moves = board.put_able();
                 if moves == 0 {
-                    board.turns ^= 1;
+                    board.next_turn ^= 1;
                     moves = board.put_able();
                     if moves == 0 {
                         min_score = min_score.min(board.bit_board[now_turns].count_ones() as i32 - board.bit_board[now_turns ^ 1].count_ones() as i32);
@@ -69,7 +69,7 @@ impl Board {
             let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
             moves &= moves - 1; // 最も小さい位のbitを消す
             virt_board.put_piece(put_place);
-            let this_score = dfs(virt_board.clone(), self.turns);
+            let this_score = dfs(virt_board.clone(), self.next_turn);
             if this_score > max_score {
                 max_score = this_score;
                 max_score_move = put_place;
@@ -79,6 +79,34 @@ impl Board {
         eprintln!("full solver: {}", max_score);
         max_score_move
     } 
+
+    pub fn end_game_full_solver_negamax(&mut self, my_turn: usize) -> i32{
+        
+        let mut moves = self.put_able();
+        if moves == 0 {
+            self.next_turn ^= 1;
+            let is_end = self.put_able() == 0;
+            self.next_turn ^= 1;
+            if is_end {
+                return self.bit_board[self.next_turn ^ 1].count_ones() as i32 - self.bit_board[self.next_turn].count_ones() as i32;
+            }
+        }
+        let mut best_score = -64;
+
+        while moves != 0 {
+            let mut board = self.clone();
+            let put_place = (!moves + 1) & moves;
+            moves &= moves - 1;
+            board.put_piece(put_place);
+            let score = board.end_game_full_solver_negamax(my_turn);
+            if board.next_turn == my_turn {
+
+            }
+            best_score = best_score.max(score);
+        }
+
+        best_score
+    }
 
     pub fn put_random_piece(&mut self) -> Result<(), PutPieceErr> {
         let legal_moves = self.put_able();
@@ -180,7 +208,7 @@ impl Board {
             let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
             moves &= moves - 1; // 最も小さい位のbitを消す
             virt_board.put_piece(put_place)?;   
-            let current_score: i32 = virt_board.simplest_eval(self.turns);
+            let current_score: i32 = virt_board.simplest_eval(self.next_turn);
             if current_score > max_score {
                 max_score = current_score;
                 max_score_put_place = put_place;
@@ -221,8 +249,8 @@ impl Board {
             0x007f7f7f7f7f7f7f,
             ];
 
-        let player_board: u64 = self.bit_board[self.turns];
-        let opponent_board: u64 = self.bit_board[self.turns ^ 1];
+        let player_board: u64 = self.bit_board[self.next_turn];
+        let opponent_board: u64 = self.bit_board[self.next_turn ^ 1];
         let mut reverse_bit = 0u64;
 
         for ((direction, &mask), &rmask) in directions.iter().zip(&masks).zip(&rmasks) {
@@ -248,10 +276,10 @@ impl Board {
             }
         }
 
-        self.bit_board[self.turns] |= put_mask;
+        self.bit_board[self.next_turn] |= put_mask;
         self.bit_board[Board::BLACK] ^= reverse_bit;
         self.bit_board[Board::WHITE] ^= reverse_bit;
-        self.turns = self.turns ^ 1;
+        self.next_turn = self.next_turn ^ 1;
         Ok(())
     }
 
@@ -266,8 +294,8 @@ impl Board {
             0x007e7e7e7e7e7e00, // 斜め
             0x007e7e7e7e7e7e00, // 斜め
         ];
-        let player_board: u64 = self.bit_board[self.turns];
-        let opponent_board: u64 = self.bit_board[self.turns ^ 1];
+        let player_board: u64 = self.bit_board[self.next_turn];
+        let opponent_board: u64 = self.bit_board[self.next_turn ^ 1];
 
         let mut legal_moves = 0u64;
         for (direction, mask) in directions.iter().zip(&masks) {
