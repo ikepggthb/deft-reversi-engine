@@ -9,3 +9,10 @@ edition = "2021"
 termion = "1"
 rand = "0.8.5"
 
+[profile.release]
+lto = true
+panic = 'abort'
+codegen-units = 1
+
+[build]
+rustflags = ["-Ctarget-cpu=native","-Ctarget-feature=+avx"]
