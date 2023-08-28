@@ -6,6 +6,9 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 
+
+mod ai;
+use ai::*;
 mod board;
 use board::*;
 type TermOut = AlternateScreen<raw::RawTerminal<std::io::Stdout>>;
@@ -153,7 +156,9 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
         is_now_pass && is_next_pass
     };
 
+    use std::time;
     let put = |board: &mut Board, y: i32, x: i32| {
+        
         if is_end(board) {
             eprintln!("End!");
             return;
@@ -164,18 +169,21 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
         }
         if board.next_turn == Board::BLACK {
             //let re_put = board.put_eval_one_simple();
-            let re_put = board.put_eval_one_simple();//board.put_piece_from_coord(y, x);
+            let re_put = put_eval_zero_simple(board);//board.put_piece_from_coord(y, x); //put_eval_one_simple(board);
+
             if let Err(PutPieceErr::NoValidPlacement) = re_put {
                 eprintln!("Err!");
                 return;
             }
         } else {
+            let now = time::Instant::now();
             let re_put;
-            if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() > 50 {
-                re_put = board.put_piece(board.end_game_full_solver_negamax());
+            if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() > 47 {
+                re_put = board.put_piece(end_game_full_solver_negamax(&board));
             } else {
-                re_put = board.put_eval_zero_simple();
+                re_put = put_eval_one_simple(board);
             }
+            eprintln!("{:?}", now.elapsed());
             if let Err(PutPieceErr::NoValidPlacement) = re_put {
                 eprintln!("Err!");
                 return;
