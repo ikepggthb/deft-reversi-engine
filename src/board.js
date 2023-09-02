@@ -2,6 +2,7 @@ const { invoke } = window.__TAURI__.tauri;
 
 const boardSize = 8;
 let board = [];
+let turn = 0; 
 const cells = document.getElementById('othello-board');
 
 const black = 1;
@@ -9,8 +10,8 @@ const white = 2;
 
 
 
-function drawBoard() {
-    
+async function drawBoard() {
+    board = await invoke("handle_board");   
   cells.innerHTML = '';
   for (let y = 0; y < boardSize; y++) {
       const tr = document.createElement('tr');
@@ -29,12 +30,12 @@ function drawBoard() {
 }
 
 async function handleCellClick(x, y) {
-    board = await invoke("put_piece_handle", {y: y, x: x});   
+    await invoke("put_piece_handle", {y: y, x: x});   
     drawBoard();
 }
 // ゲームの初期化
 async function initializeGame() {
-    board = await invoke("init_board", {});   
+    await invoke("init_board", {});   
 }
 
 
