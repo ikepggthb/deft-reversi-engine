@@ -86,7 +86,9 @@ fn handle_next_turn(board_list: State<'_, BoardManager>) -> i32 {
 fn put_piece_handle(board_list: State<'_, BoardManager>, y: i32, x: i32) {
     
     let ai_put = |board: &mut Board| {
-        if board.bit_board[0].count_ones() + board.bit_board[1].count_ones() > 44 {
+        let depth_search = 64 - (board.bit_board[0].count_ones() + board.bit_board[1].count_ones());
+        if depth_search <= 22 {
+            eprintln!("turn count: {}", depth_search);
             board.put_piece(end_game_full_solver_nega_alpha(&board));
         } else {
             put_eval_one_simple(board);
