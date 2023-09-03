@@ -3,6 +3,7 @@
 
 use std::sync::Mutex;
 
+
 use tauri::{Menu, CustomMenuItem, Submenu, WindowMenuEvent, Wry, Manager,};
 
 use tauri::State;
@@ -81,18 +82,20 @@ fn handle_next_turn(board_list: State<'_, BoardManager>) -> i32 {
     bit_board.next_turn as i32
 }
 
-
+use std::time;
 #[tauri::command]
 fn put_piece_handle(board_list: State<'_, BoardManager>, y: i32, x: i32) {
     
     let ai_put = |board: &mut Board| {
+        let now = time::Instant::now();
         let depth_search = 64 - (board.bit_board[0].count_ones() + board.bit_board[1].count_ones());
         if depth_search <= 22 {
             eprintln!("turn count: {}", depth_search);
-            board.put_piece(end_game_full_solver_nega_alpha(&board));
+            board.put_piece(end_game_full_solver_nega_alpha_move_ordering(&board));
         } else {
             put_eval_one_simple(board);
         }
+        eprintln!("{:?}", now.elapsed());
     };
 
     
@@ -103,8 +106,8 @@ fn put_piece_handle(board_list: State<'_, BoardManager>, y: i32, x: i32) {
         return;
     }
     if board.next_turn == Board::BLACK {
-        //board.put_piece_from_coord(y, x);
-        put_eval_zero_simple(&mut board);
+        board.put_piece_from_coord(y, x);
+        //put_eval_zero_simple(&mut board);
         board_list.add(board.clone());
     } else {
         ai_put(&mut board);
