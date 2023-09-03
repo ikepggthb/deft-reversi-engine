@@ -81,41 +81,6 @@ pub fn end_game_full_solver_negamax(board: &Board) -> u64{
     max_score_move
 } 
 
-pub fn nega_alpha(board: &mut Board, alpha: i32, beta: i32) -> i32{
-
-    // 探索範囲: [alpha, beta]
-    let mut moves = board.put_able();
-    let mut best_score = i32::MIN;
-    unsafe {tcount += 1;}
-    while moves != 0 {
-        let mut current_board = board.clone();
-        let put_place = (!moves + 1) & moves;
-        moves &= moves - 1;
-        current_board.put_piece_fast(put_place);
-        let score = -nega_alpha(&mut current_board, alpha, beta);
-        best_score = best_score.max(score);
-    }
-
-    if best_score == i32::MIN {
-        board.next_turn ^= 1; //pass
-        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
-            return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
-            
-            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
-            // 本来であれば以下のようになる
-            // passをもとに戻す
-            //     board.next_turn ^= 1 
-            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
-            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
-            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
-        }
-        return -nega_alpha(board, -alpha, -beta);
-    }
-
-    best_score
-}
-
-
 pub fn negamax(board: &mut Board) -> i32{
 
     let mut moves = board.put_able();
@@ -144,6 +109,75 @@ pub fn negamax(board: &mut Board) -> i32{
             // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
         }
         return -negamax(board);
+    }
+
+    best_score
+}
+
+pub fn end_game_full_solver_nega_alpha(board: &Board) -> u64{
+    let mut moves = board.put_able();
+    if moves == 0 {
+        return 0;
+    }
+
+    const score_inf: i32 = 100000i32;
+    let mut alpha = -score_inf;
+    let mut max_score_move = 0u64;
+    let beta = score_inf;
+    
+    eprintln!("my_turn: {}", board.next_turn);
+    unsafe {tcount = 0;}
+    while  moves != 0 {
+        let mut virt_board = board.clone();
+        let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+        moves &= moves - 1; // 最も小さい位のbitを消す
+        virt_board.put_piece(put_place);
+        let this_score = -nega_alpha(&mut virt_board, -beta, -alpha);
+        eprintln!("this_score: {}",this_score);
+        if this_score > alpha {
+            alpha = this_score;
+            max_score_move = put_place;
+        }
+    }
+    unsafe { eprintln!("searched nodes: {}", tcount);}
+    eprintln!("full solver: {}", alpha);
+    max_score_move
+} 
+
+
+pub fn nega_alpha(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
+
+    // 探索範囲: [alpha, beta]
+    let mut moves = board.put_able();
+    let mut best_score = i32::MIN;
+    unsafe {tcount += 1;}
+    while moves != 0 {
+        let mut current_board = board.clone();
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        current_board.put_piece_fast(put_place);
+        let score = -nega_alpha(&mut current_board, -beta, -alpha);
+        if score >= beta {
+            return score;
+        }
+        alpha = alpha.max(score);
+        best_score = best_score.max(score);
+    }
+
+    if best_score == i32::MIN {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
+            
+            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
+            // 本来であれば以下のようになる
+            // passをもとに戻す
+            //     board.next_turn ^= 1 
+            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
+            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
+            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
+        }
+        return -nega_alpha(board, -beta, -alpha);
     }
 
     best_score

@@ -25,7 +25,7 @@ codegen-units = 1
 debug = false
 opt-level = 3
 overflow-checks = false 
-# debug-assertions = false
+debug-assertions = false
 
 [build]
 rustflags = ["-Ctarget-cpu=native", "-Ctarget-feature=+avx"]

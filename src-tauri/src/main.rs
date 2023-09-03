@@ -84,33 +84,29 @@ fn handle_next_turn(board_list: State<'_, BoardManager>) -> i32 {
 
 #[tauri::command]
 fn put_piece_handle(board_list: State<'_, BoardManager>, y: i32, x: i32) {
-    let mut bit_board = board_list.current_board();
-    let put_result = bit_board.put_piece_from_coord(y, x);
-
+    
     let ai_put = |board: &mut Board| {
-        if board.bit_board[0].count_ones() + board.bit_board[1].count_ones() > 48 {
-            board.put_piece(end_game_full_solver_negamax(&board));
+        if board.bit_board[0].count_ones() + board.bit_board[1].count_ones() > 44 {
+            board.put_piece(end_game_full_solver_nega_alpha(&board));
         } else {
             put_eval_one_simple(board);
         }
     };
 
-    if put_result.is_ok(){
-        board_list.add(bit_board.clone());
+    
+    let mut board = board_list.current_board();
+    if board.put_able() == 0 {
+        board.next_turn ^= 1;
+        board_list.add(board.clone());
+        return;
+    }
+    if board.next_turn == Board::BLACK {
+        //board.put_piece_from_coord(y, x);
+        put_eval_zero_simple(&mut board);
+        board_list.add(board.clone());
     } else {
-        return;
-    }
-    if bit_board.put_able() == 0 {
-        bit_board.next_turn ^= 1;
-        return;
-    }
-    ai_put(&mut bit_board);
-    board_list.add(bit_board.clone());
-    while bit_board.put_able() == 0 {
-        bit_board.next_turn ^= 1; 
-        if bit_board.put_able() == 0{bit_board.next_turn ^= 1; return;}
-        ai_put(&mut bit_board);
-        board_list.add(bit_board.clone());
+        ai_put(&mut board);
+        board_list.add(board.clone());
     }
     
 }
