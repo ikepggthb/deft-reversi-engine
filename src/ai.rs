@@ -1,8 +1,11 @@
 
+use std::collections::BTreeMap;
+
 use crate::board::*;
 use rand::Rng;
-pub static mut tcount: i64 = 0;
+pub static mut TCOUNT: i64 = 0;
 
+#[allow(dead_code)]
 pub fn end_game_full_solver_negamax(board: &Board) -> u64{
     let mut moves = board.put_able();
     if moves == 0 {
@@ -11,22 +14,24 @@ pub fn end_game_full_solver_negamax(board: &Board) -> u64{
     let mut max_score = -64;
     let mut max_score_move = 0u64;
     
-    eprintln!("my_turn: {}", board.next_turn);
-    unsafe {tcount = 0;}
+    // eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
     while  moves != 0 {
         let mut virt_board = board.clone();
         let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
         moves &= moves - 1; // 最も小さい位のbitを消す
-        virt_board.put_piece(put_place);
+        virt_board.put_piece_fast(put_place);
         let this_score = - negamax(&mut virt_board);
-        eprintln!("this_score: {}",this_score );
+        // eprintln!("this_score: {}",this_score );
         if this_score > max_score {
             max_score = this_score;
             max_score_move = put_place;
         }
     }
-    unsafe { eprintln!("searched nodes: {}", tcount);}
-    eprintln!("full solver: {}", max_score);
+    unsafe {
+        // eprintln!("searched nodes: {}", TCOUNT);
+    }
+    // eprintln!("full solver: {}", max_score);
     max_score_move
 } 
 
@@ -34,7 +39,7 @@ pub fn negamax(board: &mut Board) -> i32{
 
     let mut moves = board.put_able();
     let mut best_score = i32::MIN;
-    unsafe {tcount += 1;}
+    unsafe {TCOUNT += 1;}
     while moves != 0 {
         let mut current_board = board.clone();
         let put_place = (!moves + 1) & moves;
@@ -63,33 +68,36 @@ pub fn negamax(board: &mut Board) -> i32{
     best_score
 }
 
+#[allow(dead_code)]
 pub fn end_game_full_solver_nega_alpha(board: &Board) -> u64{
     let mut moves = board.put_able();
     if moves == 0 {
         return 0;
     }
 
-    const score_inf: i32 = 100000i32;
-    let mut alpha = -score_inf;
+    const SCORE_INF: i32 = 100000i32;
+    let mut alpha = -SCORE_INF;
     let mut max_score_move = 0u64;
-    let beta = score_inf;
+    let beta = SCORE_INF;
     
-    eprintln!("my_turn: {}", board.next_turn);
-    unsafe {tcount = 0;}
+    // eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
     while  moves != 0 {
         let mut virt_board = board.clone();
         let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
         moves &= moves - 1; // 最も小さい位のbitを消す
-        virt_board.put_piece(put_place);
+        virt_board.put_piece_fast(put_place);
         let this_score = -nega_alpha(&mut virt_board, -beta, -alpha);
-        eprintln!("this_score: {}",this_score);
+        // eprintln!("this_score: {}",this_score);
         if this_score > alpha {
             alpha = this_score;
             max_score_move = put_place;
         }
     }
-    unsafe { eprintln!("searched nodes: {}", tcount);}
-    eprintln!("full solver: {}", alpha);
+    unsafe { 
+        // eprintln!("searched nodes: {}", TCOUNT);
+    }
+    // eprintln!("full solver: {}", alpha);
     max_score_move
 } 
 
@@ -99,7 +107,7 @@ pub fn nega_alpha(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
     // 探索範囲: [alpha, beta]
     let mut moves = board.put_able();
     let mut best_score = i32::MIN;
-    unsafe {tcount += 1;}
+    unsafe {TCOUNT += 1;}
 
     
     while moves != 0 {
@@ -140,9 +148,9 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
     if moves == 0 {
         return 0;
     }
-    const score_inf: i32 = 100000i32;
-    eprintln!("my_turn: {}", board.next_turn);
-    unsafe {tcount = 0;}
+    const SCORE_INF: i32 = 100000i32;
+    // eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
 
     // move ordering
     let mut put_board: Vec<(i32, Board, u64)> = Vec::with_capacity(moves.count_ones() as usize);
@@ -154,8 +162,8 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
         put_board.push((current_put_board.put_able() as i32, current_put_board, put_place));
     }
 
-    let mut alpha = -score_inf;
-    let beta = score_inf;
+    let mut alpha = -SCORE_INF;
+    let beta = SCORE_INF;
     let mut max_score_move = 0u64;
     
     put_board.sort_unstable_by(|(a,_, _), (b, _, _)| a.partial_cmp(b).unwrap());
@@ -163,15 +171,17 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
     
     for (_,current_put_board, put_place) in put_board.iter_mut() {
         let score = -nega_alpha_move_ordering(current_put_board, -beta, -alpha);
-        eprintln!("this_score: {}",score);
+        // eprintln!("this_score: {}",score);
         if score > alpha {
             alpha = score;
             max_score_move = *put_place;
         }
     }
 
-    unsafe { eprintln!("searched nodes: {}", tcount);}
-    eprintln!("full solver: {}", alpha);
+    unsafe {
+        // eprintln!("searched nodes: {}", TCOUNT);
+    }
+    // eprintln!("full solver: {}", alpha);
     max_score_move
 } 
 
@@ -180,10 +190,10 @@ pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> 
 
     // 探索範囲: [alpha, beta]
     let mut moves = board.put_able();
-    unsafe {tcount += 1;}
+    unsafe {TCOUNT += 1;}
 
     if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() >= 58  {
-        unsafe {tcount -= 1;}
+        unsafe {TCOUNT -= 1;}
         return nega_alpha(board, alpha, beta);
     }
 
@@ -229,7 +239,7 @@ pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> 
     best_score
 }
 
-
+#[allow(dead_code)]
 pub fn put_random_piece(board: &mut Board) -> Result<(), PutPieceErr> {
     let legal_moves = board.put_able();
     if legal_moves == 0 {
@@ -253,6 +263,7 @@ pub fn put_random_piece(board: &mut Board) -> Result<(), PutPieceErr> {
     board.put_piece(1 << selected_bit_index)
 }
 
+#[allow(dead_code)]
 pub fn put_eval_zero_simple (board: &mut Board) -> Result<(), PutPieceErr> {
     let legal_moves = board.put_able();
     if legal_moves == 0 {
@@ -283,11 +294,13 @@ pub fn put_eval_zero_simple (board: &mut Board) -> Result<(), PutPieceErr> {
         }
     }
 
-    eprintln!("{}", max_score);
+    // eprintln!("{}", max_score);
     board.put_piece(1 << max_score_index)
 }
 
-pub fn simplest_eval (board: &Board, turn: usize) -> i32 {
+
+pub fn simplest_eval (board: &mut Board) -> i32 {
+    // TODO: playerとopponentが逆になっている
     const SCORES: [i32; 64] = [
         120, -40, 20, 10, 10, 20, -40, 120,
         -40, -60, -5, -5, -5, -5, -60, -40,
@@ -299,28 +312,40 @@ pub fn simplest_eval (board: &Board, turn: usize) -> i32 {
         120, -40, 20, 10, 10, 20, -40, 120,
     ];
 
-    let mut score = 0;
-    let mut p_bit = board.bit_board[turn];
-    let mut n_bit = board.bit_board[turn ^ 1];
-    while  p_bit != 0 {
-        let bit_index = p_bit.trailing_zeros() as usize;
-        p_bit &= p_bit - 1; // 1番小さい桁の1を0にする。
-        score += SCORES[bit_index];
+
+    let player_board = board.bit_board[board.next_turn ^1];
+    let opponent_board = board.bit_board[board.next_turn];
+    
+    let mut place_score = 0;
+    let mut player_board_bit = player_board;
+    let mut opponent_board_bit = opponent_board;
+    while  player_board_bit != 0 {
+        let bit_index = player_board_bit.trailing_zeros() as usize;
+        player_board_bit &= player_board_bit - 1; // 1番小さい桁の1を0にする。
+        place_score += SCORES[bit_index];
     }
-    while  n_bit != 0 {
-        let bit_index = n_bit.trailing_zeros() as usize;
-        n_bit &= n_bit - 1; // 1番小さい桁の1を0にする。
-        score -= SCORES[bit_index];
+    while  opponent_board_bit != 0 {
+        let bit_index = opponent_board_bit.trailing_zeros() as usize;
+        opponent_board_bit &= opponent_board_bit - 1; // 1番小さい桁の1を0にする。
+        place_score -= SCORES[bit_index];
     }
 
-    let mut board_for_m = board.clone();
-    // let mask = 0b10111101_00111100_11111111_11111111_11111111_11111111_00111100_10111101_u64;
-    let mask = 0b11111111_10111101_11111111_11111111_11111111_11111111_10111101_11111111_u64;
-    let opponent_mobility = (board_for_m.put_able() & mask).count_ones() as i32;
-    board_for_m.next_turn = board_for_m.next_turn ^ 1;
-    let player_mobility = (board_for_m.put_able() & mask).count_ones() as i32;
-    board_for_m.next_turn = board_for_m.next_turn ^ 1;
-    score + (player_mobility - opponent_mobility) * 7
+
+    let player_piece_count = player_board.count_ones() as i32;
+    let opponent_piece_count = opponent_board.count_ones() as i32;
+    let piece_count_score = 
+        if player_piece_count + opponent_piece_count < 55 {
+            opponent_piece_count - player_piece_count
+        } else {0};
+    
+    let opponent_mobility = board.put_able().count_ones() as i32;
+    board.next_turn = board.next_turn ^ 1;
+    let player_mobility = board.put_able().count_ones() as i32;
+    board.next_turn = board.next_turn ^ 1;
+    let mobility_score = player_mobility - opponent_mobility;
+
+    //// eprintln!("{}, {}, {}", score * 10, (player_mobility * 60 - opponent_mobility * 50), (opponent_piece_count - player_piece_count ) * 30);
+    (place_score * 10 + mobility_score * 70 + piece_count_score * 30) / 40
 
 }
 
@@ -338,17 +363,125 @@ pub fn put_eval_one_simple (board: &mut Board) -> Result<(), PutPieceErr> {
         let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
         moves &= moves - 1; // 最も小さい位のbitを消す
         virt_board.put_piece(put_place)?;   
-        let current_score: i32 = simplest_eval(&virt_board,board.next_turn);
+        let current_score: i32 = simplest_eval(&mut virt_board);
         if current_score > max_score {
             max_score = current_score;
             max_score_put_place = put_place;
         }
     }
 
-    eprintln!("{}", max_score);
+    // eprintln!("{}", max_score);
 
     board.put_piece(max_score_put_place)
 
 }
 
 
+pub fn mid_game_solver_nega_alpha(board: &Board, depth: i32) -> u64{
+    let mut moves = board.put_able();
+    if moves == 0 {
+        return 0;
+    }
+
+    const score_inf: i32 = 100000i32;
+    let mut alpha = -score_inf;
+    let mut max_score_move = 0u64;
+    let beta = score_inf;
+    
+    // eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
+    while  moves != 0 {
+        let mut virt_board = board.clone();
+        let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+        moves &= moves - 1; // 最も小さい位のbitを消す
+        virt_board.put_piece(put_place);
+        let this_score = -nega_alpha_mid_game(&mut virt_board, -beta, -alpha, depth - 1);
+        // eprintln!("this_score: {}",this_score);
+        if this_score > alpha {
+            alpha = this_score;
+            max_score_move = put_place;
+        }
+    }
+    unsafe { 
+        // eprintln!("searched nodes: {}", TCOUNT);
+    }
+    // eprintln!("full solver: {}", alpha);
+    max_score_move
+} 
+
+pub fn mid_game_solver_nega_alpha_variation(board: &Board, depth: i32, variation: i32) -> u64{
+    let mut moves = board.put_able();
+    if moves == 0 {
+        return 0;
+    }
+
+    const score_inf: i32 = 100000i32;
+    let mut alpha = -score_inf;
+    let beta = score_inf;
+    
+    // eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
+
+    let mut move_scores = BTreeMap::new();
+
+    while  moves != 0 {
+        let mut virt_board = board.clone();
+        let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+        moves &= moves - 1; // 最も小さい位のbitを消す
+        virt_board.put_piece(put_place);
+        let this_score = -nega_alpha_mid_game(&mut virt_board, -beta, -alpha, depth - 1);
+        // eprintln!("this_score: {}",this_score);
+        move_scores.insert(this_score, put_place);
+    }
+    unsafe { 
+        // eprintln!("searched nodes: {}", TCOUNT);
+    }
+    let max_score = move_scores.last_key_value().unwrap().0;
+    let mut candidate_move = Vec::new();
+    let lower_bound = max_score - variation; // Ensure no underflow
+    for (&s, &m) in move_scores.range(lower_bound..) {
+        candidate_move.push((s,m));
+    }
+    
+    let mut rng = rand::thread_rng();
+    let random_index = rng.gen_range(0..candidate_move.len());
+    //// eprintln!("mid solver: {}", max_score);
+    //// eprintln!("mid solver put: {}", candidate_move[random_index].0);
+    candidate_move[random_index].1
+} 
+
+pub fn nega_alpha_mid_game(board: &mut Board, mut alpha: i32,beta: i32, depth_rest: i32) -> i32{
+
+    // 探索範囲: [alpha, beta]
+    let mut moves = board.put_able();
+    let mut best_score = i32::MIN;
+    unsafe {TCOUNT += 1;}
+
+    if depth_rest <= 0 {
+        return -simplest_eval(board);
+    }
+
+    while moves != 0 {
+        let mut current_board = board.clone();
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        current_board.put_piece_fast(put_place);
+        let score = -nega_alpha_mid_game(&mut current_board, -beta, -alpha, depth_rest - 1);
+        if score >= beta {
+            return score;
+        }
+        alpha = alpha.max(score);
+        best_score = best_score.max(score);
+    }
+
+    if best_score == i32::MIN {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            // return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
+            return simplest_eval(board);
+        }
+        return -nega_alpha_mid_game(board, -beta, -alpha, depth_rest - 1);
+    }
+
+    best_score
+}

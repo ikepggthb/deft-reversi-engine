@@ -7,9 +7,17 @@ use termion::screen::AlternateScreen;
 use termion::*;
 
 mod ai;
-use ai::*;
 mod board;
+mod bit;
+// ---
+mod eval;
+
+
+use eval::*;
+
+use ai::*;
 use board::*;
+
 type TermOut = AlternateScreen<raw::RawTerminal<std::io::Stdout>>;
 
 fn init_terminal(output: &mut TermOut) -> std::io::Result<()> {
@@ -180,8 +188,9 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
         is_now_pass && is_next_pass
     };
 
+    let mut new_eval = start_eval_clac();
     use std::time;
-    let put = |board: &mut Board, y: i32, x: i32| {
+    let mut put = |board: &mut Board, y: i32, x: i32| {
         let now = time::Instant::now();
         if is_end(board) {
             eprintln!("End!");
@@ -209,8 +218,10 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
             if depth_search <= 20 {
                 re_put = board.put_piece(end_game_full_solver_nega_alpha_move_ordering(&board));
             } else {
-                re_put = put_eval_one_simple(board);
+                //re_put = put_eval_one_simple(board);
                 // re_put = put_random_piece(board);
+                // re_put = board.put_piece(mid_game_solver_nega_alpha_variation(&board, 8, 2));
+                re_put = new_eval.put_piece_eval_from_board_pattern(board);
             }
 
             if let Err(PutPieceErr::NoValidPlacement) = re_put {
@@ -221,7 +232,7 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
 
         let end = now.elapsed().as_secs_f64();
         eprintln!("time: {}s, nps: {}", end, unsafe {
-            ai::tcount as f64 / end
+            ai::TCOUNT as f64 / end
         });
     };
     print_board(&board, board_cursor.y, board_cursor.x, output)?;
@@ -339,68 +350,20 @@ pub fn start() -> std::io::Result<()> {
     Ok(())
 }
 
-// ---
 
-fn put_piece_eval(board: &mut Board) -> i32 {
-    let player_mobility = board.put_able().count_ones() as i32;
-    board.next_turn = board.next_turn ^ 1;
-    let opponent_mobility = board.put_able().count_ones() as i32;
-    board.next_turn = board.next_turn ^ 1;
-    player_mobility - opponent_mobility
+
+
+fn start_eval_clac ( ) -> Evaluator{
+    let mut e = Evaluator::new();
+    for _ in 0..1000 {
+        e.learn_eval_from_board_pattern();
+    }
+    for _ in 0..1000 {
+        e.learn_eval_from_board_pattern2();
+    }
+    e
 }
 
-fn put_piece_eval_from_board_pattern() {
-
-}
-
-fn learn_eval_from_board_pattern() {
-    let board_pattern = vec![vec![vec![0i64; 59049]; 3]; 30];
-    /*
-    pattern [30][3][3^10]
-    60手を、30に分ける
-    確かめるパターンは、3つ
-    パターン数は、3通りの箇所が10箇所あるから、3^10
-
-
-    ----------
-    |........|
-    |X.XXXX.X|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    ----------
-
-
-    and
-
-    ----------
-    |X......X|
-    |XX....XX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    |XXXXXXXX|
-    ----------
-
-    and
-
-    ----------
-    |.XXXXXXX|
-    |X.XXXXXX|
-    |XX.XXXXX|
-    |XXX.XXXX|
-    |XXXX.XXX|
-    |XXXXX.XX|
-    |XXXXXX.X|
-    |XXXXXXX.|
-    ----------
-    */
-}
 
 fn main() -> std::io::Result<()> {
     start()?;

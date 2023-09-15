@@ -1,3 +1,5 @@
+use crate::bit::*;
+
 #[derive(Clone)]
 pub struct Board {
     pub bit_board: [u64; 2],
@@ -366,5 +368,32 @@ impl Board {
 
         legal_moves
 
+    }
+
+    // fn get_symetry(&self, symetry_num) -> Board {
+    //     if symetry_num & 1 {
+            
+    //     }
+    // }
+    pub fn get_all_symmetries(&self) -> Vec<Board> {
+        let mut symmetries = Vec::new();
+
+        for i in 0b0000..0b1000 { // 2^3 = 8 different combinations
+            let mut sym_board = self.clone();
+            if (i & 0b0001) != 0 {
+                sym_board.bit_board[Board::BLACK] = horizontal_mirror(sym_board.bit_board[Board::BLACK]);
+                sym_board.bit_board[Board::WHITE] = horizontal_mirror(sym_board.bit_board[Board::WHITE]);
+            }
+            if (i & 0b0010) != 0 {
+                sym_board.bit_board[Board::BLACK] = vertical_mirror(sym_board.bit_board[Board::BLACK]);
+                sym_board.bit_board[Board::WHITE] = vertical_mirror(sym_board.bit_board[Board::WHITE]);
+            }
+            if (i & 0b0100) != 0 {
+                sym_board.bit_board[Board::BLACK] = transpose(sym_board.bit_board[Board::BLACK]);
+                sym_board.bit_board[Board::WHITE] = transpose(sym_board.bit_board[Board::WHITE]);
+            }
+            symmetries.push(sym_board);
+        }
+        symmetries
     }
 }
