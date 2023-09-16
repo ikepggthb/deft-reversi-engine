@@ -188,7 +188,7 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
         is_now_pass && is_next_pass
     };
 
-    let mut new_eval = start_eval_clac();
+    let mut new_eval = start_eval_clac_thread();
     use std::time;
     let mut put = |board: &mut Board, y: i32, x: i32| {
         let now = time::Instant::now();
@@ -205,7 +205,7 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
             //let re_put = put_eval_zero_simple(board);
             let re_put = board.put_piece_from_coord(y, x); 
             //let re_put = board.put_piece(end_game_full_solver_nega_alpha_move_ordering(&board)); 
-
+            //let re_put = board.put_piece(mid_game_solver_nega_alpha(&board, 4));
             if let Err(PutPieceErr::NoValidPlacement) = re_put {
                 eprintln!("Err!");
                 return;
@@ -215,13 +215,15 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
             let depth_search =
                 64 - (board.bit_board[0].count_ones() + board.bit_board[1].count_ones());
             eprintln!("depth: {}", depth_search);
-            if depth_search <= 20 {
+            if depth_search <= 16 {
                 re_put = board.put_piece(end_game_full_solver_nega_alpha_move_ordering(&board));
             } else {
                 //re_put = put_eval_one_simple(board);
                 // re_put = put_random_piece(board);
                 // re_put = board.put_piece(mid_game_solver_nega_alpha_variation(&board, 8, 2));
-                re_put = new_eval.put_piece_eval_from_board_pattern(board);
+                // re_put = new_eval.put_piece_eval_from_board_pattern(board);
+                //eprintln!("{:0b}", put_mask);
+                re_put = board.put_piece(mid_game_solver_nega_alpha_board_pattarn(board, &new_eval, 8));
             }
 
             if let Err(PutPieceErr::NoValidPlacement) = re_put {
@@ -235,6 +237,7 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
             ai::TCOUNT as f64 / end
         });
     };
+
     print_board(&board, board_cursor.y, board_cursor.x, output)?;
     for evt in input.events() {
         match evt? {
@@ -257,6 +260,7 @@ fn game_screen(output: &mut TermOut, input: &mut std::io::Stdin) -> std::io::Res
                         // }
                     }
                     'p' => board.next_turn ^= 1,
+                    'n' => board = Board::new(),
                     'q' => return Ok(()),
                     _ => (),
                 }
@@ -352,18 +356,71 @@ pub fn start() -> std::io::Result<()> {
 
 
 
-
 fn start_eval_clac ( ) -> Evaluator{
     let mut e = Evaluator::new();
-    for _ in 0..1000 {
+    for i in 0..10000 {
+        eprintln!("count: {}", i);
         e.learn_eval_from_board_pattern();
     }
-    for _ in 0..1000 {
-        e.learn_eval_from_board_pattern2();
+    // for _ in 0..10000 {
+    //     e.learn_eval_from_board_pattern2();
+    // }
+    // for i in 0..100000 {
+    //     eprintln!("count: {}", i);
+    //     e.learn_eval_from_board_pattern3();
+    // }    
+    match e.save_to_file("output.txt") {
+        Ok(_) => println!("ファイルの保存に成功しました！"),
+        Err(e) => eprintln!("ファイルへの書き込みエラー: {}", e),
     }
+
     e
 }
 
+use std::thread;
+use std::sync::{Arc, Mutex};
+
+fn start_eval_clac_thread() -> Evaluator {
+    let num_threads = 4;
+    let iterations_per_thread = 10000 / num_threads;
+
+    // 各スレッドの結果を格納するベクター
+    let mut handles = vec![];
+
+    for _ in 0..num_threads {
+        let handle = thread::spawn(move || {
+            let mut e = Evaluator::new();
+            for i in 0..iterations_per_thread {
+                eprintln!("count: {}", i);
+                e.learn_eval_from_board_pattern();
+            }
+            e
+        });
+        handles.push(handle);
+    }
+
+    // 各スレッドの結果を取得し、eval_from_board_patternsを合計する
+    let mut result_evaluator = Evaluator::new();
+
+    for handle in handles {
+        let e = handle.join().unwrap();
+        for i in 0..(60/Evaluator::EVAL_CHANGE_INTERVAL + 1) {
+            for j in 0..Evaluator::PATTERN_NUM {
+                for k in 0..59049 {
+                    result_evaluator.eval_from_board_patterns[i][j][k] += e.eval_from_board_patterns[i][j][k];
+                }
+            }
+        }
+    }
+
+
+    match result_evaluator.save_to_file("output.txt") {
+        Ok(_) => println!("ファイルの保存に成功しました！"),
+        Err(e) => eprintln!("ファイルへの書き込みエラー: {}", e),
+    }
+
+    result_evaluator
+}
 
 fn main() -> std::io::Result<()> {
     start()?;

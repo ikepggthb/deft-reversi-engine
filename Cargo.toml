@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 termion = "1"
 rand = "0.8.5"
+rand_xorshift = "0.3"
 
 [profile.release]
 lto = true

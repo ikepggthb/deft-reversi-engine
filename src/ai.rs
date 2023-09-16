@@ -1,7 +1,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::board::*;
+use crate::{board::*, eval::Evaluator};
 use rand::Rng;
 pub static mut TCOUNT: i64 = 0;
 
@@ -481,6 +481,74 @@ pub fn nega_alpha_mid_game(board: &mut Board, mut alpha: i32,beta: i32, depth_re
             return simplest_eval(board);
         }
         return -nega_alpha_mid_game(board, -beta, -alpha, depth_rest - 1);
+    }
+
+    best_score
+}
+
+pub fn mid_game_solver_nega_alpha_board_pattarn(board: &Board, eval: &Evaluator, depth: i32) -> u64{
+    let mut moves = board.put_able();
+    if moves == 0 {
+        return 0;
+    }
+
+    const score_inf: i32 = 100000000i32;
+    let mut alpha = -score_inf;
+    let mut max_score_move = 0u64;
+    let beta = score_inf;
+    
+    // eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
+    while  moves != 0 {
+        let mut virt_board = board.clone();
+        let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+        moves &= moves - 1; // 最も小さい位のbitを消す
+        virt_board.put_piece(put_place);
+        //let this_score = -nega_alpha_mid_game_board_pattarn(&mut virt_board, eval, -beta, -alpha, depth - 1);
+        let this_score = -nega_alpha_mid_game_board_pattarn(&mut virt_board, eval, -beta, score_inf, depth - 1);
+        eprintln!("this_score: {}, {}",this_score, put_place);
+        if this_score > alpha {
+            alpha = this_score;
+            max_score_move = put_place;
+        }
+    }
+    unsafe { 
+        // eprintln!("searched nodes: {}", TCOUNT);
+    }
+    eprintln!("mid solver: {}", alpha);
+    max_score_move
+} 
+pub fn nega_alpha_mid_game_board_pattarn(board: &mut Board, eval: &Evaluator, mut alpha: i32,beta: i32, depth_rest: i32) -> i32{
+
+    if depth_rest <= 0 {
+        return eval.eval_from_board_pattern(&board) as i32;
+    }
+    // 探索範囲: [alpha, beta]
+    let mut moves = board.put_able();
+    let mut best_score = i32::MIN;
+    unsafe {TCOUNT += 1;}
+
+
+    while moves != 0 {
+        let mut current_board = board.clone();
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        current_board.put_piece_fast(put_place);
+        let score = -nega_alpha_mid_game_board_pattarn(&mut current_board, eval, -beta, -alpha, depth_rest - 1);
+        if score >= beta {
+            return score;
+        }
+        alpha = alpha.max(score);
+        best_score = best_score.max(score);
+    }
+
+    if best_score == i32::MIN {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            // return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
+            return -eval.eval_from_board_pattern(&board) as i32;
+        }
+        return -nega_alpha_mid_game_board_pattarn(board, eval, -beta, -alpha, depth_rest - 1);
     }
 
     best_score
