@@ -11,12 +11,14 @@ mod board;
 mod bit;
 // ---
 mod eval;
+mod learn;
 
 
 use eval::*;
 
 use ai::*;
 use board::*;
+use learn::*;
 
 type TermOut = AlternateScreen<raw::RawTerminal<std::io::Stdout>>;
 
@@ -423,6 +425,8 @@ fn start_eval_clac_thread() -> Evaluator {
 }
 
 fn main() -> std::io::Result<()> {
-    start()?;
+    //start()?;
+    let mut le = LearnEvaluation::new();
+    le.input_record("./0000_egaroucid_6_3_0_lv11/0000000.txt")?;
     Ok(())
 }

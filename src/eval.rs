@@ -308,47 +308,7 @@ impl Evaluator {
         board.put_piece( move_scores[random_index].1)
     
     }
-    
-    pub fn put_piece_eval_from_board_pattern_for_learn_old(&self,board: &mut Board) -> Result<(), PutPieceErr>  {
-    
-        let legal_moves = board.put_able();
-        if legal_moves == 0 {
-            return Err(PutPieceErr::NoValidPlacement);
-        }
-
-        let mut move_scores = BTreeMap::new();
         
-        let mut moves = legal_moves;
-        while  moves != 0 {
-            let mut virt_board = board.clone();
-            let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
-            moves &= moves - 1; // 最も小さい位のbitを消す
-            virt_board.put_piece(put_place)?;  
-            let current_score = -self.eval_from_board_pattern_for_learn(&virt_board);
-            // eprintln!("current_score: {}", current_score);
-             move_scores.insert(current_score, put_place);
-            // if current_score > max_score {
-            //     max_score = current_score;
-            //     max_score_put_place = put_place;
-            // }
-        }
-
-
-        let max_score = move_scores.last_key_value().unwrap().0;
-        let mut candidate_move = Vec::new();
-        let variation = (max_score / 8).abs();
-        let lower_bound = max_score - variation; // Ensure no underflow
-        for (&s, &m) in move_scores.range(lower_bound..) {
-            candidate_move.push((s,m));
-        }
-        
-        let mut rng = rand::thread_rng();
-        let random_index = rng.gen_range(0..candidate_move.len());
-
-        board.put_piece( candidate_move[random_index].1)
-    
-    }
-    
     
     pub fn learn_eval_from_board_pattern(&mut self) {
         let mut board = Board::new();
@@ -470,4 +430,9 @@ impl Evaluator {
         }
     }
     
+
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 }

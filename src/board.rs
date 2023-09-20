@@ -13,7 +13,7 @@ pub enum PutPieceErr {
 
 impl Board {
 
-    const BOARD_SIZE: i32 = 8;
+    pub const BOARD_SIZE: i32 = 8;
     pub const BLACK: usize = 0;
     pub const WHITE: usize = 1;
 
@@ -395,5 +395,34 @@ impl Board {
             symmetries.push(sym_board);
         }
         symmetries
+    }
+    pub fn get_all_rotations(&self) -> Vec<Board> {
+        let mut rotations = Vec::new();
+
+        let mut no_rotation = self.clone();
+        rotations.push(no_rotation);
+
+        let mut rotate_90_degrees = self.clone();
+        rotate_90_degrees.bit_board[Board::BLACK] = vertical_mirror(rotate_90_degrees.bit_board[Board::BLACK]);
+        rotate_90_degrees.bit_board[Board::WHITE] = vertical_mirror(rotate_90_degrees.bit_board[Board::WHITE]);
+        rotate_90_degrees.bit_board[Board::BLACK] = transpose(rotate_90_degrees.bit_board[Board::BLACK]);
+        rotate_90_degrees.bit_board[Board::WHITE] = transpose(rotate_90_degrees.bit_board[Board::WHITE]);
+        rotations.push(rotate_90_degrees);
+
+        let mut rotate_180_degrees = self.clone();
+        rotate_180_degrees.bit_board[Board::BLACK] = vertical_mirror(rotate_180_degrees.bit_board[Board::BLACK]);
+        rotate_180_degrees.bit_board[Board::WHITE] = vertical_mirror(rotate_180_degrees.bit_board[Board::WHITE]);
+        rotate_180_degrees.bit_board[Board::BLACK] = horizontal_mirror(rotate_180_degrees.bit_board[Board::BLACK]);
+        rotate_180_degrees.bit_board[Board::WHITE] = horizontal_mirror(rotate_180_degrees.bit_board[Board::WHITE]);
+        rotations.push(rotate_180_degrees);
+
+        let mut rotate_270_degrees = self.clone();
+        rotate_270_degrees.bit_board[Board::BLACK] = horizontal_mirror(rotate_270_degrees.bit_board[Board::BLACK]);
+        rotate_270_degrees.bit_board[Board::WHITE] = horizontal_mirror(rotate_270_degrees.bit_board[Board::WHITE]);
+        rotate_270_degrees.bit_board[Board::BLACK] = transpose(rotate_270_degrees.bit_board[Board::BLACK]);
+        rotate_270_degrees.bit_board[Board::WHITE] = transpose(rotate_270_degrees.bit_board[Board::WHITE]);
+        rotations.push(rotate_270_degrees);
+
+        rotations
     }
 }
