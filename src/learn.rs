@@ -75,19 +75,34 @@ impl LearnEvaluation {
     }
 
 
-    pub fn sum_errors_eval_weight(&self, eval_wight: &Vec<Vec<i64>>, learn_data_num: usize) -> i64{
+    pub fn sum_errors_eval_weight(&self, learn_data_num: usize, move_count: usize) -> i64{
         let mut sum_errors = 0;
         for learn_data_count in 0..learn_data_num {
-            for move_count in 0..60 {
-                sum_errors =  self.correct_eval[learn_data_count] - self.eval.eval_from_board_pattern(&self.records[learn_data_count][move_count]);
-            }
+            sum_errors =  self.correct_eval[learn_data_count] - self.eval.eval_from_board_pattern(&self.records[learn_data_count][move_count]);
         }
 
         sum_errors   
     }
 
-    pub fn learn() {
-        
+    pub fn learn(&mut self) {
+        let learn_data_num = 10000;
+        for start_move_count in (0..60).step_by(Evaluator::EVAL_CHANGE_INTERVAL) {
+            let step = start_move_count / Evaluator::EVAL_CHANGE_INTERVAL;
+            let d = vec![vec![0; 59049]; 3];
+            let sum_errors = {
+                let mut sum = 0;
+                for move_count in start_move_count..(start_move_count+Evaluator::EVAL_CHANGE_INTERVAL){
+                    self.sum_errors_eval_weight(learn_data_num, move_count);
+                }
+                sum
+            };
+
+            let alpha = 2 / (learn_data_num + Evaluator::EVAL_CHANGE_INTERVAL);
+
+            for i in 0..learn_data_num {
+                
+            }
+        }
     }
 
     // pub fn eb(&self, w: &Vec<Vec<i64>>, p: &Vec<Vec<Vec<u64>>>) -> i64{
