@@ -28,9 +28,9 @@ pub fn end_game_full_solver_negamax(board: &Board) -> u64{
             max_score_move = put_place;
         }
     }
-    unsafe {
-        // eprintln!("searched nodes: {}", TCOUNT);
-    }
+    // unsafe {
+    //     eprintln!("searched nodes: {}", TCOUNT);
+    // }
     // eprintln!("full solver: {}", max_score);
     max_score_move
 } 
@@ -94,9 +94,9 @@ pub fn end_game_full_solver_nega_alpha(board: &Board) -> u64{
             max_score_move = put_place;
         }
     }
-    unsafe { 
-        // eprintln!("searched nodes: {}", TCOUNT);
-    }
+    // unsafe { 
+    //     eprintln!("searched nodes: {}", TCOUNT);
+    // }
     // eprintln!("full solver: {}", alpha);
     max_score_move
 } 
@@ -178,9 +178,9 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
         }
     }
 
-    unsafe {
-        // eprintln!("searched nodes: {}", TCOUNT);
-    }
+    // unsafe {
+    //     eprintln!("searched nodes: {}", TCOUNT);
+    // }
     // eprintln!("full solver: {}", alpha);
     max_score_move
 } 
@@ -383,10 +383,10 @@ pub fn mid_game_solver_nega_alpha(board: &Board, depth: i32) -> u64{
         return 0;
     }
 
-    const score_inf: i32 = 100000i32;
-    let mut alpha = -score_inf;
+    const SCORE_INF: i32 = 100000i32;
+    let mut alpha = -SCORE_INF;
     let mut max_score_move = 0u64;
-    let beta = score_inf;
+    let beta = SCORE_INF;
     
     // eprintln!("my_turn: {}", board.next_turn);
     unsafe {TCOUNT = 0;}
@@ -394,7 +394,7 @@ pub fn mid_game_solver_nega_alpha(board: &Board, depth: i32) -> u64{
         let mut virt_board = board.clone();
         let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
         moves &= moves - 1; // 最も小さい位のbitを消す
-        virt_board.put_piece(put_place);
+        let _ = virt_board.put_piece(put_place);
         let this_score = -nega_alpha_mid_game(&mut virt_board, -beta, -alpha, depth - 1);
         // eprintln!("this_score: {}",this_score);
         if this_score > alpha {
@@ -402,9 +402,9 @@ pub fn mid_game_solver_nega_alpha(board: &Board, depth: i32) -> u64{
             max_score_move = put_place;
         }
     }
-    unsafe { 
-        // eprintln!("searched nodes: {}", TCOUNT);
-    }
+    // unsafe { 
+    //     eprintln!("searched nodes: {}", TCOUNT);
+    // }
     // eprintln!("full solver: {}", alpha);
     max_score_move
 } 
@@ -415,9 +415,9 @@ pub fn mid_game_solver_nega_alpha_variation(board: &Board, depth: i32, variation
         return 0;
     }
 
-    const score_inf: i32 = 100000i32;
-    let mut alpha = -score_inf;
-    let beta = score_inf;
+    const SCORE_INF: i32 = 100000i32;
+    let alpha = -SCORE_INF;
+    let beta = SCORE_INF;
     
     // eprintln!("my_turn: {}", board.next_turn);
     unsafe {TCOUNT = 0;}
@@ -428,14 +428,14 @@ pub fn mid_game_solver_nega_alpha_variation(board: &Board, depth: i32, variation
         let mut virt_board = board.clone();
         let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
         moves &= moves - 1; // 最も小さい位のbitを消す
-        virt_board.put_piece(put_place);
+        let _ = virt_board.put_piece(put_place);
         let this_score = -nega_alpha_mid_game(&mut virt_board, -beta, -alpha, depth - 1);
         // eprintln!("this_score: {}",this_score);
         move_scores.insert(this_score, put_place);
     }
-    unsafe { 
-        // eprintln!("searched nodes: {}", TCOUNT);
-    }
+    // unsafe { 
+    //     eprintln!("searched nodes: {}", TCOUNT);
+    // }
     let max_score = move_scores.last_key_value().unwrap().0;
     let mut candidate_move = Vec::new();
     let lower_bound = max_score - variation; // Ensure no underflow
@@ -492,10 +492,10 @@ pub fn mid_game_solver_nega_alpha_board_pattarn(board: &Board, eval: &Evaluator,
         return 0;
     }
 
-    const score_inf: i32 = 100000000i32;
-    let mut alpha = -score_inf;
+    const SCORE_INF: i32 = 100000000i32;
+    let mut alpha = -SCORE_INF;
     let mut max_score_move = 0u64;
-    let beta = score_inf;
+    let beta = SCORE_INF;
     
     // eprintln!("my_turn: {}", board.next_turn);
     unsafe {TCOUNT = 0;}
@@ -503,18 +503,18 @@ pub fn mid_game_solver_nega_alpha_board_pattarn(board: &Board, eval: &Evaluator,
         let mut virt_board = board.clone();
         let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
         moves &= moves - 1; // 最も小さい位のbitを消す
-        virt_board.put_piece(put_place);
+        let _ =virt_board.put_piece(put_place);
         //let this_score = -nega_alpha_mid_game_board_pattarn(&mut virt_board, eval, -beta, -alpha, depth - 1);
-        let this_score = -nega_alpha_mid_game_board_pattarn(&mut virt_board, eval, -beta, score_inf, depth - 1);
+        let this_score = -nega_alpha_mid_game_board_pattarn(&mut virt_board, eval, -beta, SCORE_INF, depth - 1);
         eprintln!("this_score: {}, {}",this_score, put_place);
         if this_score > alpha {
             alpha = this_score;
             max_score_move = put_place;
         }
     }
-    unsafe { 
-        // eprintln!("searched nodes: {}", TCOUNT);
-    }
+    // unsafe { 
+    //     eprintln!("searched nodes: {}", TCOUNT);
+    // }
     eprintln!("mid solver: {}", alpha);
     max_score_move
 } 

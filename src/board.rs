@@ -399,7 +399,7 @@ impl Board {
     pub fn get_all_rotations(&self) -> Vec<Board> {
         let mut rotations = Vec::new();
 
-        let mut no_rotation = self.clone();
+        let no_rotation = self.clone();
         rotations.push(no_rotation);
 
         let mut rotate_90_degrees = self.clone();

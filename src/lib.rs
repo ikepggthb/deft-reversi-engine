@@ -11,9 +11,32 @@ pub use ai::*;
 // use eval::*;
 // use learn::*;
 
-use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-pub fn add(a: i32, b: i32) -> i32 {
-    a + b
+pub struct BoardManager {
+    board_record: Vec<Board>
+}
+
+impl BoardManager {
+    pub fn new() -> Self {
+        let mut bm = Self { board_record: Vec::new() };
+        bm.board_record.push(Board::new());
+        bm
+    }
+    
+    pub fn current_board(&self) -> Board {
+        self.board_record.last().unwrap().clone()
+    }
+
+    pub fn undo(&mut self) -> Board {
+        self.board_record.pop().unwrap()
+    }
+
+    pub fn add(&mut self, board: Board){
+        self.board_record.push(board);
+    }
+
+    pub fn clean(&mut self) {
+        self.board_record.clear();
+        self.board_record.push(Board::new());
+    }
 }

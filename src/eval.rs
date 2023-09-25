@@ -2,17 +2,14 @@
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
-
-use crate::board;
 use crate::board::*;
 use crate::ai::*;
 
 
-use crate::bit::*;
+// use crate::bit::*;
 
-use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::{BufWriter, Write, Error, BufRead, BufReader,self};
+use std::io::{BufWriter, Write, Error, BufRead, BufReader};
 use rand::Rng;
 
 // use rand::Rng;
@@ -133,7 +130,7 @@ impl Evaluator {
         }
     }
     pub fn save_to_file(&self, filename: &str) -> Result<(), Error> {
-        let mut file = File::create(filename)?;
+        let file = File::create(filename)?;
         let mut writer = BufWriter::new(file);
 
 
