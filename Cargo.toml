@@ -17,5 +17,5 @@ panic = 'abort'
 codegen-units = 1
 
 [build]
-rustflags = ["-Ctarget-cpu=native","-Ctarget-feature=+avx"]
+rustflags = ["-Ctarget-cpu=native"]
 

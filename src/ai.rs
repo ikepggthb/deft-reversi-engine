@@ -336,13 +336,18 @@ pub fn simplest_eval (board: &mut Board) -> i32 {
     let piece_count_score = 
         if player_piece_count + opponent_piece_count < 55 {
             opponent_piece_count - player_piece_count
-        } else {0};
+        } else {player_piece_count - opponent_piece_count};
     
     let opponent_mobility = board.put_able().count_ones() as i32;
     board.next_turn = board.next_turn ^ 1;
     let player_mobility = board.put_able().count_ones() as i32;
     board.next_turn = board.next_turn ^ 1;
-    let mobility_score = player_mobility - opponent_mobility;
+    let mobility_score = 
+        if player_piece_count + opponent_piece_count < 52 {
+            player_mobility - opponent_mobility
+        } else {
+            (player_mobility - opponent_mobility) / 3
+        };
 
     //// eprintln!("{}, {}, {}", score * 10, (player_mobility * 60 - opponent_mobility * 50), (opponent_piece_count - player_piece_count ) * 30);
     (place_score * 10 + mobility_score * 70 + piece_count_score * 30) / 40
