@@ -537,7 +537,7 @@ pub fn mid_game_solver_nega_alpha_move_ordering(board: &Board, depth: i32) -> u6
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        let e = -nega_alpha_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 4);
+        let e = -nega_alpha_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, depth - 3);
         put_board.push((e, current_put_board, put_place));
 
     }
@@ -573,7 +573,7 @@ pub fn nega_alpha_move_ordering_mid_game(board: &mut Board, mut alpha: i32,beta:
     let mut moves = board.put_able();
     unsafe {TCOUNT += 1;}
 
-    if depth_rest < 6  {
+    if depth_rest < 4  {
         unsafe {TCOUNT -= 1;}
         return nega_alpha_mid_game(board, alpha, beta, depth_rest);
     }
@@ -586,7 +586,7 @@ pub fn nega_alpha_move_ordering_mid_game(board: &mut Board, mut alpha: i32,beta:
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        let e = -nega_alpha_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 4);
+        let e = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, depth_rest - 3);
         put_board.push((e, current_put_board));
 
     }
