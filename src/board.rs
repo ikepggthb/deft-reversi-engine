@@ -92,7 +92,7 @@ impl Board {
     }
 
 
-    
+    #[inline(always)]
     pub fn put_piece_fast(&mut self, put_mask: u64){
 
         let player_board: u64 = self.bit_board[self.next_turn];
@@ -199,7 +199,7 @@ impl Board {
         self.next_turn = self.next_turn ^ 1;
     }
 
-    #[inline(always)]
+
     pub fn put_able_old(&self) -> u64{
         let blank = !(self.bit_board[Board::BLACK] | self.bit_board[Board::WHITE]);
 
@@ -370,11 +370,7 @@ impl Board {
 
     }
 
-    // fn get_symetry(&self, symetry_num) -> Board {
-    //     if symetry_num & 1 {
-            
-    //     }
-    // }
+
     pub fn get_all_symmetries(&self) -> Vec<Board> {
         let mut symmetries = Vec::new();
 
@@ -425,4 +421,26 @@ impl Board {
 
         rotations
     }
+
+    #[inline(always)]
+    pub fn move_count(&self) -> i32{
+        (self.bit_board[Board::BLACK].count_ones() + self.bit_board[Board::WHITE].count_ones() - 4) as i32
+    }
+
+    pub fn print_board(&self) {
+        for y in 0..8 {
+            for x in 0..8 {
+                let mask = 1u64 << y * 8 + x;
+                if self.bit_board[Board::BLACK] & mask != 0 {
+                    print!("X");
+                } else if self.bit_board[Board::WHITE] & mask != 0 {
+                    print!("O");
+                } else {
+                    print!(".");
+                }
+            }
+            println!();
+        }
+    }
+
 }
