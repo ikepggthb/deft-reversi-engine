@@ -1,7 +1,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{board::*, eval::Evaluator};
+use crate::board::*;
 use rand::Rng;
 pub static mut TCOUNT: i64 = 0;
 
@@ -102,6 +102,41 @@ pub fn end_game_full_solver_nega_alpha(board: &Board) -> u64{
 } 
 
 
+#[allow(dead_code)]
+pub fn end_game_full_solver_nega_alpha_return_detail(board: &Board) -> (u64, i32){
+    let mut moves = board.put_able();
+    if moves == 0 {
+        return (0, board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32);
+    }
+
+    const SCORE_INF: i32 = 100000i32;
+    let mut alpha = -SCORE_INF;
+    let mut max_score_move = 0u64;
+    let beta = SCORE_INF;
+    
+    // eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
+    while  moves != 0 {
+        let mut virt_board = board.clone();
+        let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+        moves &= moves - 1; // 最も小さい位のbitを消す
+        virt_board.put_piece_fast(put_place);
+        let this_score = -nega_alpha(&mut virt_board, -beta, -alpha);
+        // eprintln!("this_score: {}",this_score);
+        if this_score > alpha {
+            alpha = this_score;
+            max_score_move = put_place;
+        }
+    }
+    // unsafe { 
+    //     eprintln!("searched nodes: {}", TCOUNT);
+    // }
+    // eprintln!("full solver: {}", alpha);
+    (max_score_move, alpha)
+} 
+
+
+
 pub fn nega_alpha(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
 
     // 探索範囲: [alpha, beta]
@@ -142,14 +177,13 @@ pub fn nega_alpha(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
     best_score
 }
 
-
-pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
+#[allow(dead_code)]
+pub fn end_game_full_solver_nega_alpha_move_ordering_return_detail(board: &Board) -> (u64, i32){
     let mut moves = board.put_able();
     if moves == 0 {
-        return 0;
+        return (0, board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32);
     }
     const SCORE_INF: i32 = 100000i32;
-    // eprintln!("my_turn: {}", board.next_turn);
     unsafe {TCOUNT = 0;}
 
     // move ordering
@@ -159,8 +193,50 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        put_board.push((current_put_board.put_able().count_ones() as i32, current_put_board, put_place));
+        let e  = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 8);
+        put_board.push((e, current_put_board, put_place));
     }
+
+    let mut alpha = -SCORE_INF;
+    let beta = SCORE_INF;
+    let mut max_score_move = 0u64;
+    
+    put_board.sort_unstable_by(|(a,_, _), (b, _, _)| a.partial_cmp(b).unwrap());
+
+    for (_,current_put_board, put_place) in put_board.iter_mut() {
+        let score = -nega_alpha_move_ordering_from_eval(current_put_board, -beta, -alpha);
+        if score > alpha {
+            alpha = score;
+            max_score_move = *put_place;
+        }
+    }
+
+    (max_score_move, alpha)
+} 
+use std::time::Instant;
+pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
+    let start = Instant::now();
+
+    let mut moves = board.put_able();
+    if moves == 0 {
+        return 0;
+    }
+    const SCORE_INF: i32 = 100000i32;
+    eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
+
+    // move ordering
+    let mut put_board: Vec<(i32, Board, u64)> = Vec::with_capacity(moves.count_ones() as usize);
+    while moves != 0 {
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        let mut current_put_board = board.clone();
+        current_put_board.put_piece_fast(put_place);
+        let e  = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 8);
+        println!("move_ordering_score: {}",e);
+        put_board.push((e, current_put_board, put_place));
+    }
+    println!("move_ordering end.");
 
     let mut alpha = -SCORE_INF;
     let beta = SCORE_INF;
@@ -170,20 +246,80 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
 
     
     for (_,current_put_board, put_place) in put_board.iter_mut() {
-        let score = -nega_alpha_move_ordering(current_put_board, -beta, -alpha);
-        // eprintln!("this_score: {}",score);
+        let score = -nega_alpha_move_ordering_from_eval(current_put_board, -beta, -alpha);
+        println!("this_score: {}",score);
         if score > alpha {
             alpha = score;
             max_score_move = *put_place;
         }
     }
 
-    // unsafe {
-    //     eprintln!("searched nodes: {}", TCOUNT);
-    // }
-    // eprintln!("full solver: {}", alpha);
+    let end = start.elapsed();
+    println!("{}秒経過しました。", end.as_secs_f64());
+    unsafe {
+        eprintln!("searched nodes: {}", TCOUNT);
+         eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
+    }
+    eprintln!("full solver: {}", alpha);
+
+
     max_score_move
 } 
+
+pub fn nega_alpha_move_ordering_from_eval(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
+
+    // 探索範囲: [alpha, beta]
+    let mut moves = board.put_able();
+    unsafe {TCOUNT += 1;}
+    const SCORE_INF: i32 = 100000i32;
+
+    if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() >= 42 {
+        unsafe {TCOUNT -= 1;}
+        return nega_alpha_move_ordering(board, alpha, beta);
+    }
+
+    // move ordering
+    let mut put_board: Vec<(i32, Board)> = Vec::with_capacity(moves.count_ones() as usize);
+    while moves != 0 {
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        let mut current_put_board = board.clone();
+        current_put_board.put_piece_fast(put_place);
+        let e = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 2);
+        put_board.push((e, current_put_board));
+
+    }
+
+    put_board.sort_unstable_by(|(a,_), (b, _)| a.partial_cmp(b).unwrap());
+    
+    let mut best_score = i32::MIN;
+    for (_,current_put_board) in put_board.iter_mut() {
+        let score = -nega_alpha_move_ordering(current_put_board, -beta, -alpha);
+        if score >= beta {
+            return score;
+        }
+        alpha = alpha.max(score);
+        best_score = best_score.max(score);
+    }
+
+    if best_score == i32::MIN {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
+            
+            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
+            // 本来であれば以下のようになる
+            // passをもとに戻す
+            //     board.next_turn ^= 1 
+            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
+            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
+            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
+        }
+        return -nega_alpha_move_ordering_from_eval(board, -beta, -alpha);
+    }
+
+    best_score
+}
 
 
 pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
@@ -192,7 +328,7 @@ pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> 
     let mut moves = board.put_able();
     unsafe {TCOUNT += 1;}
 
-    if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() >= 58  {
+    if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() >= 56  {
         unsafe {TCOUNT -= 1;}
         return nega_alpha(board, alpha, beta);
     }
@@ -313,12 +449,12 @@ pub fn simplest_eval (board: &mut Board) -> i32 {
     // ];
     const SCORES: [i32; 64] = [
         120, -40, 10, 10, 10, 10, -40, 120,
-        -40, -60, -5, -5, -5, -5, -60, -40,
-         10,  -5,  0, -2, -2,  0,  -5,  10,
-         10,  -5, -2,  0,  0, -2,  -5,  10,
-         10,  -5, -2,  0,  0, -2,  -5,  10,
-         10,  -5,  0, -2, -2,  0,  -5,  10,
-        -40, -60, -5, -5, -5, -5, -60, -40,
+        -40, -60, -5, -4, -4, -5, -60, -40,
+         10,  -5, -1, -2, -2, -1,  -5,  10,
+         10,  -4, -2,  0,  0, -2,  -4,  10,
+         10,  -4, -2,  0,  0, -2,  -4,  10,
+         10,  -5, -1, -2, -2, -1,  -5,  10,
+        -40, -60, -5, -4, -4, -5, -60, -40,
         120, -40, 10, 10, 10, 10, -40, 120,
     ];
 
