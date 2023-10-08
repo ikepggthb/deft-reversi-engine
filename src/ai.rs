@@ -213,16 +213,16 @@ pub fn end_game_full_solver_nega_alpha_move_ordering_return_detail(board: &Board
 
     (max_score_move, alpha)
 } 
-use std::time::Instant;
+// use std::time::Instant;
 pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
-    let start = Instant::now();
+    // let start = Instant::now();
 
     let mut moves = board.put_able();
     if moves == 0 {
         return 0;
     }
     const SCORE_INF: i32 = 100000i32;
-    eprintln!("my_turn: {}", board.next_turn);
+    // eprintln!("my_turn: {}", board.next_turn);
     unsafe {TCOUNT = 0;}
 
     // move ordering
@@ -233,10 +233,10 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
         let e  = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 8);
-        println!("move_ordering_score: {}",e);
+        // println!("move_ordering_score: {}",e);
         put_board.push((e, current_put_board, put_place));
     }
-    println!("move_ordering end.");
+    // println!("move_ordering end.");
 
     let mut alpha = -SCORE_INF;
     let beta = SCORE_INF;
@@ -247,20 +247,20 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
     
     for (_,current_put_board, put_place) in put_board.iter_mut() {
         let score = -nega_alpha_move_ordering_from_eval(current_put_board, -beta, -alpha);
-        println!("this_score: {}",score);
+        // println!("this_score: {}",score);
         if score > alpha {
             alpha = score;
             max_score_move = *put_place;
         }
     }
 
-    let end = start.elapsed();
-    println!("{}秒経過しました。", end.as_secs_f64());
-    unsafe {
-        eprintln!("searched nodes: {}", TCOUNT);
-         eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
-    }
-    eprintln!("full solver: {}", alpha);
+    // let end = start.elapsed();
+    // println!("{}秒経過しました。", end.as_secs_f64());
+    // unsafe {
+    //     eprintln!("searched nodes: {}", TCOUNT);
+    //      eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
+    // }
+    // eprintln!("full solver: {}", alpha);
 
 
     max_score_move
@@ -451,8 +451,8 @@ pub fn simplest_eval (board: &mut Board) -> i32 {
         120, -40, 10, 10, 10, 10, -40, 120,
         -40, -60, -5, -4, -4, -5, -60, -40,
          10,  -5, -1, -2, -2, -1,  -5,  10,
-         10,  -4, -2,  0,  0, -2,  -4,  10,
-         10,  -4, -2,  0,  0, -2,  -4,  10,
+         10,  -4, -2,  -1,  -1, -2,  -4,  10,
+         10,  -4, -2,  -1,  -1, -2,  -4,  10,
          10,  -5, -1, -2, -2, -1,  -5,  10,
         -40, -60, -5, -4, -4, -5, -60, -40,
         120, -40, 10, 10, 10, 10, -40, 120,
