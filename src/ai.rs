@@ -5,6 +5,8 @@ use crate::board::*;
 use rand::Rng;
 pub static mut TCOUNT: i64 = 0;
 
+const SCORE_INF: i32 = 100000i32;
+
 #[allow(dead_code)]
 pub fn end_game_full_solver_negamax(board: &Board) -> u64{
     let mut moves = board.put_able();
@@ -75,7 +77,6 @@ pub fn end_game_full_solver_nega_alpha(board: &Board) -> u64{
         return 0;
     }
 
-    const SCORE_INF: i32 = 100000i32;
     let mut alpha = -SCORE_INF;
     let mut max_score_move = 0u64;
     let beta = SCORE_INF;
@@ -109,7 +110,6 @@ pub fn end_game_full_solver_nega_alpha_return_detail(board: &Board) -> (u64, i32
         return (0, board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32);
     }
 
-    const SCORE_INF: i32 = 100000i32;
     let mut alpha = -SCORE_INF;
     let mut max_score_move = 0u64;
     let beta = SCORE_INF;
@@ -183,7 +183,7 @@ pub fn end_game_full_solver_nega_alpha_move_ordering_return_detail(board: &Board
     if moves == 0 {
         return (0, board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32);
     }
-    const SCORE_INF: i32 = 100000i32;
+    
     unsafe {TCOUNT = 0;}
 
     // move ordering
@@ -223,7 +223,7 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
         eprintln!("put place is none.");
         return 0;
     }
-    const SCORE_INF: i32 = 100000i32;
+    
     unsafe {TCOUNT = 0;}
 
     // move ordering
@@ -275,7 +275,7 @@ pub fn nega_alpha_move_ordering_from_eval(board: &mut Board, mut alpha: i32,beta
     // 探索範囲: [alpha, beta]
     let mut moves = board.put_able();
     unsafe {TCOUNT += 1;}
-    const SCORE_INF: i32 = 100000i32;
+    
     let move_count = board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones();
 
     if 60 - move_count <= 18 {
@@ -379,6 +379,196 @@ pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> 
 
     best_score
 }
+
+use std::time::Instant;
+pub fn end_game_full_solver_nega_scout_move_ordering(board: &Board) -> u64{
+    let start = Instant::now();
+    
+    eprintln!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
+    let mut moves = board.put_able();
+    if moves == 0 {
+        eprintln!("put place is none.");
+        return 0;
+    }
+    
+    unsafe {TCOUNT = 0;}
+
+    // move ordering
+    let mut put_boards: Vec<(i32, Board, u64)> = Vec::with_capacity(moves.count_ones() as usize);
+    while moves != 0 {
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        let mut current_put_board = board.clone();
+        current_put_board.put_piece_fast(put_place);
+        let e  = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 9);
+         eprintln!("* {}, move_ordering_score: {}",Board::move_bit_to_str(put_place).unwrap(),e);
+        put_boards.push((e, current_put_board, put_place));
+    }
+     eprintln!("move_ordering end.");
+
+    let mut alpha = -SCORE_INF;
+    let beta = SCORE_INF;
+    let mut max_score_move = 0u64;
+    
+    put_boards.sort_unstable_by(|(a,_, _), (b, _, _)| b.partial_cmp(a).unwrap());
+
+    let mut put_boards_iter = put_boards.iter_mut();
+    let first_child_board = put_boards_iter.next().unwrap();
+    alpha = -nega_scout_move_ordering_by_eval(&mut first_child_board.1, -beta, -alpha);
+    max_score_move = first_child_board.2;
+
+    for (_,current_put_board, put_place) in put_boards_iter {
+        let mut score = -nega_scout_move_ordering_by_eval(current_put_board, -alpha - 1, -alpha);
+        if score > alpha {
+            alpha = score;
+            score = -nega_scout_move_ordering_by_eval(current_put_board, -beta, -alpha);
+            alpha = alpha.max(score);
+            max_score_move = *put_place;
+        }
+        eprintln!("put: {}, nega scout score: {}",Board::move_bit_to_str(*put_place).unwrap(), score);
+    }
+
+    let end = start.elapsed();
+    eprintln!("{}秒経過しました。", end.as_secs_f64());
+    unsafe {
+        eprintln!("searched nodes: {}", TCOUNT);
+         eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
+    }
+    eprintln!("full solver: {}", alpha);
+
+    max_score_move
+} 
+
+
+pub fn nega_scout_move_ordering_by_eval(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
+
+    let move_count = board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones();
+    let rest_depth = 60 - move_count;
+
+    if rest_depth <= 16 {
+        unsafe {TCOUNT -= 1;}
+        return nega_scout_move_ordering(board, alpha, beta);
+    }
+
+    // 探索範囲: [alpha, beta]
+    let mut moves = board.put_able();
+    unsafe {TCOUNT += 1;}
+
+    if moves == 0 {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
+            
+            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
+            // 本来であれば以下のようになる
+            // passをもとに戻す
+            //     board.next_turn ^= 1 
+            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
+            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
+            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
+        }
+        return -nega_scout_move_ordering_by_eval(board, -beta, -alpha);
+    }
+
+    // move ordering
+    let mut put_boards: Vec<(i32, Board)> = Vec::with_capacity(moves.count_ones() as usize);
+    while moves != 0 {
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        let mut current_put_board = board.clone();
+        current_put_board.put_piece_fast(put_place);
+        let e = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 5);
+        put_boards.push((e, current_put_board));
+
+    }
+
+    put_boards.sort_unstable_by(|(a,_), (b, _)| b.partial_cmp(a).unwrap());
+    
+    let mut put_boards_iter = put_boards.iter_mut();
+
+    let first_child_board = put_boards_iter.next().unwrap();
+    let mut best_score =  -nega_scout_move_ordering_by_eval(&mut first_child_board.1, -beta, -alpha);
+    if best_score >= beta { return best_score; }
+    alpha = alpha.max(best_score);
+
+    for (_,current_put_board) in put_boards_iter {
+        let mut score = -nega_scout_move_ordering_by_eval(current_put_board, -alpha - 1, -alpha);
+        if score >= beta {return score;}
+        if alpha < score {
+            alpha = score;
+            score = -nega_scout_move_ordering_by_eval(current_put_board, -beta, -alpha);
+            if beta <= score { return score; }
+            alpha = alpha.max(score);
+        }
+        best_score = best_score.max(score);
+    }
+
+    best_score
+}
+
+
+
+pub fn nega_scout_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
+
+    if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() >= 56  {
+        unsafe {TCOUNT -= 1;}
+        return nega_alpha(board, alpha, beta);
+    }
+
+    // 探索範囲: [alpha, beta]
+    let mut moves = board.put_able();
+    unsafe {TCOUNT += 1;}
+
+    if moves == 0 {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
+            
+            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
+            // 本来であれば以下のようになる
+            // passをもとに戻す
+            //     board.next_turn ^= 1 
+            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
+            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
+            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
+        }
+        return -nega_scout_move_ordering(board, -beta, -alpha);
+    }
+
+
+    // move ordering
+    let mut put_boards: Vec<(i32, Board)> = Vec::with_capacity(moves.count_ones() as usize);
+    while moves != 0 {
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        let mut current_put_board = board.clone();
+        current_put_board.put_piece_fast(put_place);
+        put_boards.push((current_put_board.put_able().count_ones() as i32, current_put_board));
+    }
+
+    put_boards.sort_unstable_by(|(a,_), (b, _)| a.partial_cmp(b).unwrap());
+    let mut put_boards_iter = put_boards.iter_mut();
+
+    let first_child_board = put_boards_iter.next().unwrap();
+    let mut best_score =  -nega_alpha_move_ordering(&mut first_child_board.1, -beta, -alpha);
+    if best_score >= beta { return best_score; }
+    alpha = alpha.max(best_score);
+
+    for (_,current_put_board) in put_boards_iter {
+        let mut score = -nega_scout_move_ordering(current_put_board, -alpha - 1, -alpha);
+        if score >= beta {return score;}
+        if alpha < score {
+            alpha = score;
+            score = -nega_scout_move_ordering(current_put_board, -beta, -alpha);
+            if beta <= score { return score; }
+            alpha = alpha.max(score);
+        }
+        best_score = best_score.max(score);
+    }
+
+    best_score
+}
+
 
 #[allow(dead_code)]
 pub fn put_random_piece(board: &mut Board) -> Result<(), PutPieceErr> {
@@ -503,9 +693,9 @@ pub fn simplest_eval (board: &mut Board) -> i32 {
     let player_piece_count = player_board.count_ones() as i32;
     let opponent_piece_count = opponent_board.count_ones() as i32;
     let piece_count_score = 
-        if player_piece_count + opponent_piece_count < 55 {
+        if player_piece_count + opponent_piece_count < 50 {
             opponent_piece_count - player_piece_count
-        } else {(player_piece_count - opponent_piece_count) * 15};
+        } else {(player_piece_count - opponent_piece_count) * (player_piece_count + opponent_piece_count - 50) * 2};
     
     let opponent_mobility = board.put_able().count_ones() as i32;
     board.next_turn = board.next_turn ^ 1;
@@ -517,6 +707,7 @@ pub fn simplest_eval (board: &mut Board) -> i32 {
     (place_score * 10 + mobility_score * 85 + piece_count_score * 40) / 40
 
 }
+
 
 pub fn put_eval_one_simple (board: &mut Board) -> Result<(), PutPieceErr> {
     let legal_moves = board.put_able();
@@ -552,7 +743,7 @@ pub fn mid_game_solver_nega_alpha(board: &Board, depth: i32) -> u64{
         return 0;
     }
 
-    const SCORE_INF: i32 = 100000i32;
+    
     let mut alpha = -SCORE_INF;
     let mut max_score_move = 0u64;
     let beta = SCORE_INF;
@@ -584,7 +775,7 @@ pub fn mid_game_solver_nega_alpha_variation(board: &Board, depth: i32, variation
         return 0;
     }
 
-    const SCORE_INF: i32 = 100000i32;
+    
     let alpha = -SCORE_INF;
     let beta = SCORE_INF;
     
@@ -662,7 +853,7 @@ pub fn mid_game_solver_nega_alpha_move_ordering(board: &Board, depth: i32) -> u6
     if moves == 0 {
         return 0;
     }
-    const SCORE_INF: i32 = 100000i32;
+    
     // eprintln!("my_turn: {}", board.next_turn);
     unsafe {TCOUNT = 0;}
 
@@ -715,7 +906,7 @@ pub fn nega_alpha_move_ordering_mid_game(board: &mut Board, mut alpha: i32,beta:
     }
 
     // move ordering
-    const SCORE_INF: i32 = 100000i32;
+    
     let mut put_board: Vec<(i32, Board)> = Vec::with_capacity(moves.count_ones() as usize);
     while moves != 0 {
         let put_place = (!moves + 1) & moves;

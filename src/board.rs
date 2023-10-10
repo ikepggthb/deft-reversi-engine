@@ -442,5 +442,30 @@ impl Board {
             println!();
         }
     }
+    pub fn move_bit_to_str(bit: u64) -> Result<String, String> {
+        for y in 0..8 {
+            for x in 0..8 {
+                let mask = 1u64 << y * 8 + x;
+                if mask == bit {
+                    let mut result = String::new();
+                    match x {
+                        0 => result.push('a'),
+                        1 => result.push('b'),
+                        2 => result.push('c'),
+                        3 => result.push('d'),
+                        4 => result.push('e'),
+                        5 => result.push('f'),
+                        6 => result.push('g'),
+                        7 => result.push('h'),
+                        _ => {}
+                    }
+                    result.push_str((y+1).to_string().as_str());
+                    return Ok(result);
+                }
+            }
+        }
 
+        let error_message = format!("put_place is undefind. (bit = {:0x})", bit);
+        return Err(error_message);
+    }
 }
