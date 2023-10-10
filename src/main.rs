@@ -106,8 +106,8 @@ fn ffo_test() -> Result<(),  std::io::Error> {
                     Ok(s) => {
                         println!("put place: {}", s);
                     }
-                    Err(es) => {
-                        println!("{}", es);
+                    Err(em) => {
+                        println!("{}", em);
                     }
                 }
                 
@@ -135,7 +135,7 @@ fn read_ffo_test_files<P: AsRef<Path>>(filename: P) -> io::Result<Board> {
 
     let mut lines = reader.lines();
 
-    let first_line = lines.nth(0).unwrap().unwrap();
+    let first_line = lines.next().unwrap().unwrap();
     for (i,c) in first_line.chars().enumerate() {
         match c {
             'O' => {
@@ -148,8 +148,10 @@ fn read_ffo_test_files<P: AsRef<Path>>(filename: P) -> io::Result<Board> {
         }
     }
     
-    let second_line = lines.nth(1).unwrap().unwrap();
-    if &second_line.as_str()[0..5] == "Black" {
+    let second_line = lines.next().unwrap().unwrap();
+     println!("{}",first_line);
+    println!("{}",second_line);
+    if second_line.contains("Black") {
         board.next_turn = Board::BLACK;
     }else {
         board.next_turn = Board::WHITE;
@@ -182,34 +184,35 @@ fn move_bit_to_str(bit: u64) -> Result<String, String> {
         }
     }
 
-    return Err("error: put_place is undefind".to_string());
+    let error_message = format!("put_place is undefind. (bit = {:0x})", bit);
+    return Err(error_message);
 }
 
 fn main () {
-    //ffo_test();
-    let mut eval = Evaluator::new();
+    ffo_test();
+    //let mut eval = Evaluator::new();
 
-    let learn_move_count = 56;
-     eval.learn_debug(learn_move_count);
+    // let learn_move_count = 56;
+    //  eval.learn_debug(learn_move_count);
 
-    let learn_count = 5000000;
-    let p = learn_count / 100;
+    // let learn_count = 5000000;
+    // let p = learn_count / 100;
      
-    for j in 0..1 {
+    // for j in 0..1 {
        
-        for i in 0..learn_count {
-            eval.learn(learn_move_count);
+    //     for i in 0..learn_count {
+    //         eval.learn(learn_move_count);
 
-            if i % p == 0 {
-                println!("{}%", i / p);
-            }
-        }
+    //         if i % p == 0 {
+    //             println!("{}%", i / p);
+    //         }
+    //     }
 
-        let mut error_sum = 0f64;
-        for k in 0..100 {
-            error_sum += eval.learn_debug(learn_move_count);
-        }
-        println!("誤差平均: {}", error_sum / 100f64);
-    }
+    //     let mut error_sum = 0f64;
+    //     for k in 0..100 {
+    //         error_sum += eval.learn_debug(learn_move_count);
+    //     }
+    //     println!("誤差平均: {}", error_sum / 100f64);
+    // }
 
 }
