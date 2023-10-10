@@ -102,7 +102,7 @@ fn ffo_test() -> Result<(),  std::io::Error> {
                 println!("#{} ", i);
                 board.print_board();
                 // let put_place = end_game_full_solver_nega_alpha_move_ordering(&board);
-                let put_place = end_game_full_solver_nega_scout_move_ordering(&board);
+                let put_place = end_game_full_solver_nega_scout(&board);
                 
                 match move_bit_to_str(put_place) {
                     Ok(s) => {
