@@ -5,6 +5,8 @@ use crate::board::*;
 use rand::Rng;
 pub static mut TCOUNT: i64 = 0;
 
+use crate::t_table::*;
+
 const SCORE_INF: i32 = 100000i32;
 
 #[allow(dead_code)]
@@ -138,13 +140,23 @@ pub fn end_game_full_solver_nega_alpha_return_detail(board: &Board) -> (u64, i32
 
 
 pub fn nega_alpha(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
-
+    unsafe {TCOUNT += 1;}
+    if board.bit_board[Board::BLACK] | board.bit_board[Board::WHITE] == u64::MAX {
+        return  board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32;
+    }
     // 探索範囲: [alpha, beta]
     let mut moves = board.put_able();
-    let mut best_score = i32::MIN;
-    unsafe {TCOUNT += 1;}
+    if moves == 0 {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            // 終盤ソルバーなので、最後の石数差を評価値としている。
+            // ここは、処理を高速化するため、passをもとに戻すを省略していることに注意
+            return  -(board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32);
+        }
+        return -nega_alpha(board, -beta, -alpha);
+    }
+    let mut best_score = -SCORE_INF;
 
-    
     while moves != 0 {
         let mut current_board = board.clone();
         let put_place = (!moves + 1) & moves;
@@ -158,21 +170,7 @@ pub fn nega_alpha(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
         best_score = best_score.max(score);
     }
 
-    if best_score == i32::MIN {
-        board.next_turn ^= 1; //pass
-        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
-            return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
-            
-            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
-            // 本来であれば以下のようになる
-            // passをもとに戻す
-            //     board.next_turn ^= 1 
-            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
-            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
-            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
-        }
-        return -nega_alpha(board, -beta, -alpha);
-    }
+
 
     best_score
 }
@@ -260,10 +258,10 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
 
     // let end = start.elapsed();
     // eprintln!("{}秒経過しました。", end.as_secs_f64());
-    // unsafe {
-    //     eprintln!("searched nodes: {}", TCOUNT);
-    //      eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
-    // }
+    unsafe {
+        eprintln!("searched nodes: {}", TCOUNT);
+        //  eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
+    }
     // eprintln!("full solver: {}", alpha);
 
 
@@ -327,18 +325,32 @@ pub fn nega_alpha_move_ordering_from_eval(board: &mut Board, mut alpha: i32,beta
 }
 
 
+
 pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
-
-    // 探索範囲: [alpha, beta]
-    let mut moves = board.put_able();
-    unsafe {TCOUNT += 1;}
-
-    if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() >= 56  {
-        unsafe {TCOUNT -= 1;}
+    
+    if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() > 60  {
         return nega_alpha(board, alpha, beta);
     }
 
+    unsafe {TCOUNT += 1;}
+    if board.bit_board[Board::BLACK] | board.bit_board[Board::WHITE] == u64::MAX {
+        return  board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32;
+    }
+    // 探索範囲: [alpha, beta]
+    let mut moves = board.put_able();
+    if moves == 0 {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
+            // 終盤ソルバーなので、最後の石数差を評価値としている。
+            return  -(board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32);
+        }
+        return -nega_alpha_move_ordering(board, -beta, -alpha);
+    }
+    
+    unsafe {TCOUNT += 1;}
     // move ordering
+
     let mut put_board: Vec<(i32, Board)> = Vec::with_capacity(moves.count_ones() as usize);
     while moves != 0 {
         let put_place = (!moves + 1) & moves;
@@ -361,28 +373,14 @@ pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> 
         best_score = best_score.max(score);
     }
 
-    if best_score == i32::MIN {
-        board.next_turn ^= 1; //pass
-        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
-            return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
-            
-            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
-            // 本来であれば以下のようになる
-            // passをもとに戻す
-            //     board.next_turn ^= 1 
-            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
-            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
-            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
-        }
-        return -nega_alpha_move_ordering(board, -beta, -alpha);
-    }
-
     best_score
 }
 
-use std::time::Instant;
+// use std::time::Instant;
 pub fn end_game_full_solver_nega_scout(board: &Board) -> u64{
-    let start = Instant::now();
+    // let start = Instant::now();
+
+    let mut transposition_table = TranspositionTable::new();
     
     eprintln!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
     let mut moves = board.put_able();
@@ -400,7 +398,7 @@ pub fn end_game_full_solver_nega_scout(board: &Board) -> u64{
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        let e  = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 9);
+        let e  = -nega_scout_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 8);
          eprintln!("* {}, move_ordering_score: {}",Board::move_bit_to_str(put_place).unwrap(),e);
         put_boards.push((e, current_put_board, put_place));
     }
@@ -414,25 +412,26 @@ pub fn end_game_full_solver_nega_scout(board: &Board) -> u64{
 
     let mut put_boards_iter = put_boards.iter_mut();
     let first_child_board = put_boards_iter.next().unwrap();
-    alpha = -nega_scout_by_eval(&mut first_child_board.1, -beta, -alpha);
+    alpha = -nega_scout_by_eval(&mut first_child_board.1, -beta, -alpha, &mut transposition_table);
     max_score_move = first_child_board.2;
 
+    eprintln!("put: {}, nega scout score: {}",Board::move_bit_to_str(max_score_move).unwrap(), alpha);
     for (_,current_put_board, put_place) in put_boards_iter {
-        let mut score = -nega_scout_by_eval(current_put_board, -alpha - 1, -alpha);
+        let mut score = -nega_scout_by_eval(current_put_board, -alpha - 1, -alpha, &mut transposition_table);
         if score > alpha {
             alpha = score;
-            score = -nega_scout_by_eval(current_put_board, -beta, -alpha);
+            score = -nega_scout_by_eval(current_put_board, -beta, -alpha, &mut transposition_table);
             alpha = alpha.max(score);
             max_score_move = *put_place;
         }
         eprintln!("put: {}, nega scout score: {}",Board::move_bit_to_str(*put_place).unwrap(), score);
     }
 
-    let end = start.elapsed();
-    eprintln!("{}秒経過しました。", end.as_secs_f64());
+    // let end = start.elapsed();
+    // eprintln!("{}秒経過しました。", end.as_secs_f64());
     unsafe {
         eprintln!("searched nodes: {}", TCOUNT);
-         eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
+        //  eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
     }
     eprintln!("full solver: {}", alpha);
 
@@ -440,14 +439,15 @@ pub fn end_game_full_solver_nega_scout(board: &Board) -> u64{
 } 
 
 
-pub fn nega_scout_by_eval(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
+pub fn nega_scout_by_eval(board: &mut Board, mut alpha: i32,mut beta: i32, transposition_table: &mut TranspositionTable) -> i32{
 
     let move_count = board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones();
     let rest_depth = 60 - move_count;
 
-    if rest_depth <= 16 {
+    if rest_depth < 14 {
         unsafe {TCOUNT -= 1;}
-        return nega_scout(board, alpha, beta);
+        return nega_scout(board, alpha, beta, transposition_table);
+        // return nega_alpha_move_ordering_tt(board, alpha, beta, transposition_table);
     }
 
     // 探索範囲: [alpha, beta]
@@ -458,16 +458,28 @@ pub fn nega_scout_by_eval(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
         board.next_turn ^= 1; //pass
         if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
             return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
-            
-            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
-            // 本来であれば以下のようになる
-            // passをもとに戻す
-            //     board.next_turn ^= 1 
-            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
-            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
-            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
         }
-        return -nega_scout_by_eval(board, -beta, -alpha);
+        return -nega_scout_by_eval(board, -beta, -alpha, transposition_table);
+    }
+
+    // 置換表確認
+
+    if let Some(t) = transposition_table.get(board) {
+        if t.max <= alpha {return t.max}
+        else if t.min >= beta {return t.min;}
+        else if t.max == t.min {return t.max;}
+
+        alpha = alpha.max(t.min);
+        beta = beta.min(t.max);
+    }
+
+    let move_ordering_depth;
+    if rest_depth < 16 {
+        move_ordering_depth = 2;
+    } else if rest_depth < 18 {
+        move_ordering_depth = 4;
+    } else {
+        move_ordering_depth = 6;
     }
 
     // move ordering
@@ -477,7 +489,8 @@ pub fn nega_scout_by_eval(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        let e = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 5);
+        let e = -nega_scout_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, move_ordering_depth);
+        // let e = -simplest_eval(&mut current_put_board);
         put_boards.push((e, current_put_board));
 
     }
@@ -487,32 +500,114 @@ pub fn nega_scout_by_eval(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
     let mut put_boards_iter = put_boards.iter_mut();
 
     let first_child_board = put_boards_iter.next().unwrap();
-    let mut best_score =  -nega_scout_by_eval(&mut first_child_board.1, -beta, -alpha);
-    if best_score >= beta { return best_score; }
-    alpha = alpha.max(best_score);
+    let mut this_node_best_score =  -nega_scout_by_eval(&mut first_child_board.1, -beta, -alpha, transposition_table);
+    if this_node_best_score >= beta { transposition_table.add(board, this_node_best_score, SCORE_INF); return this_node_best_score; }
+    let mut this_node_alpha = alpha.max(this_node_best_score);
 
     for (_,current_put_board) in put_boards_iter {
-        let mut score = -nega_scout_by_eval(current_put_board, -alpha - 1, -alpha);
-        if score >= beta {return score;}
-        if alpha < score {
-            alpha = score;
-            score = -nega_scout_by_eval(current_put_board, -beta, -alpha);
-            if beta <= score { return score; }
-            alpha = alpha.max(score);
+        let mut score = -nega_scout_by_eval(current_put_board, -this_node_alpha - 1, -this_node_alpha, transposition_table);
+        if score >= beta {
+            transposition_table.add(board, score, SCORE_INF);
+            return score;
         }
+        if this_node_alpha < score {
+            this_node_alpha = score;
+            score = -nega_scout_by_eval(current_put_board, -beta, -this_node_alpha, transposition_table);
+            if beta <= score { 
+                transposition_table.add(board, score, SCORE_INF);
+                return score;
+            }
+            this_node_alpha = this_node_alpha.max(score);
+        }
+        this_node_best_score = this_node_best_score.max(score);
+    }
+
+    if this_node_best_score > alpha {
+        transposition_table.add(board, this_node_best_score, this_node_best_score);
+    } else {
+        transposition_table.add(board, -SCORE_INF, this_node_best_score)
+    }
+
+    this_node_best_score
+}
+
+
+pub fn nega_alpha_move_ordering_tt(board: &mut Board, mut alpha: i32,mut beta: i32, transposition_table: &mut TranspositionTable) -> i32{
+
+    // 探索範囲: [alpha, beta]
+    let mut moves = board.put_able();
+    unsafe {TCOUNT += 1;}
+
+    if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() >= 56  {
+        unsafe {TCOUNT -= 1;}
+        return nega_alpha(board, alpha, beta);
+    }
+
+    if let Some(t) = transposition_table.get(board) {
+        if t.max <= alpha {return t.max}
+        else if t.min >= beta {return t.min;}
+        else if t.max == t.min {return t.max;}
+
+        alpha = alpha.max(t.min);
+        beta = beta.min(t.max);
+    }
+
+    // move ordering
+    let mut put_board: Vec<(i32, Board)> = Vec::with_capacity(moves.count_ones() as usize);
+    while moves != 0 {
+        let put_place = (!moves + 1) & moves;
+        moves &= moves - 1;
+        let mut current_put_board = board.clone();
+        current_put_board.put_piece_fast(put_place);
+        put_board.push((current_put_board.put_able().count_ones() as i32, current_put_board));
+
+    }
+
+    put_board.sort_unstable_by(|(a,_), (b, _)| a.partial_cmp(b).unwrap());
+    
+    let mut this_node_alpha = alpha;
+
+    let mut best_score = i32::MIN;
+    for (_,current_put_board) in put_board.iter_mut() {
+        let score = -nega_alpha_move_ordering(current_put_board, -beta, -this_node_alpha);
+        if score >= beta {
+            transposition_table.add(board, score, SCORE_INF);
+            return score;
+        }
+        this_node_alpha = this_node_alpha.max(score);
         best_score = best_score.max(score);
+    }
+
+    if best_score == i32::MIN {
+        board.next_turn ^= 1; //pass
+        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+            return  board.bit_board[board.next_turn  ^ 1].count_ones() as i32 - board.bit_board[board.next_turn].count_ones() as i32;
+            
+            // ここは、処理を高速化するため、passしたのををもとに戻すを省略していることに注意
+            // 本来であれば以下のようになる
+            // passをもとに戻す
+            //     board.next_turn ^= 1 
+            // 「最後に打った次の評価値」すなわち、「boardの自分の手番の評価値」すなわち、「最後に打った手番の負の評価値」を返す
+            //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
+            // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
+        }
+        return -nega_alpha_move_ordering(board, -beta, -alpha);
+    }
+
+    if best_score > alpha {
+        transposition_table.add(board, best_score, best_score);
+    } else {
+        transposition_table.add(board, -SCORE_INF, best_score);
     }
 
     best_score
 }
 
+pub fn nega_scout(board: &mut Board, mut alpha: i32,mut beta: i32, transposition_table: &mut TranspositionTable) -> i32{
 
-
-pub fn nega_scout(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
-
-    if board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones() >= 56  {
-        unsafe {TCOUNT -= 1;}
-        return nega_alpha(board, alpha, beta);
+    let rest_depth = 64 - board.bit_board[Board::BLACK].count_ones() + board.bit_board[Board::WHITE].count_ones();
+    if rest_depth < 6  {
+        return nega_alpha_move_ordering(board, alpha, beta);
     }
 
     // 探索範囲: [alpha, beta]
@@ -532,7 +627,16 @@ pub fn nega_scout(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
             //     return board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn  ^ 1].count_ones() as i32; 
             // もちろん、終盤ソルバーなので、最後の石数差を評価値としている。
         }
-        return -nega_scout(board, -beta, -alpha);
+        return -nega_scout(board, -beta, -alpha, transposition_table);
+    }
+
+    if let Some(t) = transposition_table.get(board) {
+        if t.max <= alpha {return t.max}
+        else if t.min >= beta {return t.min;}
+        else if t.max == t.min {return t.max;}
+
+        alpha = alpha.max(t.min);
+        beta = beta.min(t.max);
     }
 
 
@@ -549,24 +653,95 @@ pub fn nega_scout(board: &mut Board, mut alpha: i32,beta: i32) -> i32{
     put_boards.sort_unstable_by(|(a,_), (b, _)| a.partial_cmp(b).unwrap());
     let mut put_boards_iter = put_boards.iter_mut();
 
+    
     let first_child_board = put_boards_iter.next().unwrap();
-    let mut best_score =  -nega_alpha_move_ordering(&mut first_child_board.1, -beta, -alpha);
-    if best_score >= beta { return best_score; }
-    alpha = alpha.max(best_score);
+    let mut this_node_best_score =  -nega_scout(&mut first_child_board.1, -beta, -alpha, transposition_table);
+    if this_node_best_score >= beta { transposition_table.add(board, this_node_best_score, SCORE_INF); return this_node_best_score; }
+    let mut this_node_alpha = alpha.max(this_node_best_score);
 
     for (_,current_put_board) in put_boards_iter {
-        let mut score = -nega_scout(current_put_board, -alpha - 1, -alpha);
-        if score >= beta {return score;}
-        if alpha < score {
-            alpha = score;
-            score = -nega_scout(current_put_board, -beta, -alpha);
-            if beta <= score { return score; }
-            alpha = alpha.max(score);
+        let mut score = -nega_scout(current_put_board, -this_node_alpha - 1, -this_node_alpha, transposition_table);
+        if score >= beta {
+            transposition_table.add(board, score, SCORE_INF);
+            return score;
         }
-        best_score = best_score.max(score);
+        if this_node_alpha < score {
+            this_node_alpha = score;
+            score = -nega_scout(current_put_board, -beta, -this_node_alpha, transposition_table);
+            if beta <= score { 
+                transposition_table.add(board, score, SCORE_INF);
+                return score;
+             }
+            this_node_alpha = this_node_alpha.max(score);
+        }
+        this_node_best_score = this_node_best_score.max(score);
     }
 
-    best_score
+    if this_node_best_score > alpha {
+        transposition_table.add(board, this_node_best_score, this_node_best_score);
+    } else {
+        transposition_table.add(board, -SCORE_INF, this_node_best_score);
+    }
+
+    this_node_best_score
+}
+
+pub fn end_game_full_solver_mtd_f(board: &Board) -> u64{
+    // let start = Instant::now();
+
+    let mut transposition_table = TranspositionTable::new();
+
+    let mut moves = board.put_able();
+    if moves == 0 {
+        return 0;
+    }
+    let mut max_score = -64;
+    let mut max_score_move = 0u64;
+    let mut f = 0;
+    eprintln!("my_turn: {}", board.next_turn);
+    unsafe {TCOUNT = 0;}
+    while  moves != 0 {
+        let mut virt_board = board.clone();
+        let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
+        moves &= moves - 1; // 最も小さい位のbitを消す
+        virt_board.put_piece_fast(put_place);
+        let this_score = mtd_f(&mut virt_board, f, &mut transposition_table);
+        f = this_score;
+        eprintln!("this_score: {}",this_score );
+        if this_score > max_score {
+            max_score = this_score;
+            max_score_move = put_place;
+            
+        }
+    }
+    unsafe {
+        eprintln!("searched nodes: {}", TCOUNT);
+    }
+    // eprintln!("full solver: {}", max_score);
+    max_score_move
+} 
+
+pub fn mtd_f(board: &mut Board, mut f: i32, transposition_table: &mut TranspositionTable) -> i32{
+    
+    let mut upper_bound = SCORE_INF;
+    let mut lower_bound = -SCORE_INF;
+
+    while lower_bound < upper_bound {
+        let beta;
+        if f == lower_bound {
+            beta = f + 1;
+        } else {
+            beta = f;
+        }
+        f = nega_scout_by_eval(board, beta-1, beta, transposition_table);
+        if f < beta {
+            upper_bound = f;
+        }else {
+            lower_bound = f;
+        }
+    }
+
+    f
 }
 
 

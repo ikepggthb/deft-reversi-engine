@@ -4,6 +4,8 @@ pub mod ai;
 mod bit;
 mod eval;
 mod learn;
+
+mod t_table;
 // ---
 
 pub use board::*;

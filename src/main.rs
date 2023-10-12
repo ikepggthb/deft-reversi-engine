@@ -3,6 +3,7 @@ mod board;
 mod bit;
 mod eval;
 mod learn;
+mod t_table;
 // ---
 
 use eval::*;
@@ -101,8 +102,9 @@ fn ffo_test() -> Result<(),  std::io::Error> {
             Ok(board) => {
                 println!("#{} ", i);
                 board.print_board();
-                // let put_place = end_game_full_solver_nega_alpha_move_ordering(&board);
+                //  let put_place = end_game_full_solver_nega_alpha_move_ordering(&board);
                 let put_place = end_game_full_solver_nega_scout(&board);
+                // let put_place = end_game_full_solver_mtd_f(&board);
                 
                 match move_bit_to_str(put_place) {
                     Ok(s) => {
