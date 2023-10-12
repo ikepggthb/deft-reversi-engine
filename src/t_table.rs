@@ -48,7 +48,8 @@ impl TranspositionTable {
     
         table
     }
-    
+
+    #[inline(always)]
     pub fn hash_board(&self, board: &Board) -> usize{
         let player_board_bit = board.bit_board[Board::BLACK];
         let opponent_board_bit = board.bit_board[Board::WHITE];
@@ -60,9 +61,11 @@ impl TranspositionTable {
             self.rand_table[4][((opponent_board_bit >> 48) & 0xFFFF) as usize] ^
             self.rand_table[5][((opponent_board_bit >> 32) & 0xFFFF) as usize] ^
             self.rand_table[6][((opponent_board_bit >> 16) & 0xFFFF) as usize] ^
-            self.rand_table[7][(opponent_board_bit & 0xFFFF) as usize] )as usize
+            self.rand_table[7][(opponent_board_bit & 0xFFFF) as usize]
+            ^ 0b1000100010001 )as usize
     }
 
+    #[inline(always)]
     pub fn add(&mut self, board: &Board, min: i32, max: i32) {
         let index = self.hash_board(board);
         self.table[index] = TableData {
@@ -73,6 +76,7 @@ impl TranspositionTable {
         }
     }
 
+    #[inline(always)]
     pub fn get(&self, board: &Board) -> Option<&TableData>{
         let index = self.hash_board(board) as usize;
         let x = &self.table[index];
