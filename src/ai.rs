@@ -222,6 +222,17 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
     
     unsafe {TCOUNT = 0;}
 
+    let rest_depth = (board.bit_board[Board::BLACK] | board.bit_board[Board::WHITE]).count_zeros() as i32;
+    let move_ordering_depth;
+    if rest_depth > 18 {
+        move_ordering_depth = 8;
+    } else if rest_depth > 16 {
+        move_ordering_depth = 4;
+    } else {
+        move_ordering_depth = 2;
+    }
+
+
     // move ordering
     let mut put_board: Vec<(i32, Board, u64)> = Vec::with_capacity(moves.count_ones() as usize);
     while moves != 0 {
@@ -229,7 +240,7 @@ pub fn end_game_full_solver_nega_alpha_move_ordering(board: &Board) -> u64{
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        let e  = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 9);
+        let e  = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, move_ordering_depth);
          eprintln!("move_ordering_score: {}",e);
         put_board.push((e, current_put_board, put_place));
     }
@@ -330,7 +341,7 @@ pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> 
      if rest_depth == 0 {
          return  board.bit_board[board.next_turn].count_ones() as i32 - board.bit_board[board.next_turn ^ 1].count_ones() as i32;
      }
-    if rest_depth < 7  {
+    if rest_depth < 6  {
         unsafe {TCOUNT -= 1;}
         return nega_alpha(board, alpha, beta);
     }
@@ -374,9 +385,9 @@ pub fn nega_alpha_move_ordering(board: &mut Board, mut alpha: i32,beta: i32) -> 
     best_score
 }
 
-use std::time::Instant;
+// use std::time::Instant;
 pub fn end_game_full_solver_nega_scout(board: &Board) -> u64{
-    let start = Instant::now();
+    // let start = Instant::now();
 
     let mut transposition_table = TranspositionTable::new();
     
@@ -389,6 +400,16 @@ pub fn end_game_full_solver_nega_scout(board: &Board) -> u64{
     
     unsafe {TCOUNT = 0;}
 
+    let rest_depth = (board.bit_board[Board::BLACK] | board.bit_board[Board::WHITE]).count_zeros() as i32;
+    let move_ordering_depth;
+    if rest_depth > 18 {
+        move_ordering_depth = 8;
+    } else if rest_depth > 16 {
+        move_ordering_depth = 4;
+    } else {
+        move_ordering_depth = 2;
+    }
+
     // move ordering
     let mut put_boards: Vec<(i32, Board, u64)> = Vec::with_capacity(moves.count_ones() as usize);
     while moves != 0 {
@@ -396,7 +417,7 @@ pub fn end_game_full_solver_nega_scout(board: &Board) -> u64{
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        let e  = -nega_scout_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 8);
+        let e  = -nega_scout_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, move_ordering_depth);
          eprintln!("* {}, move_ordering_score: {}",Board::move_bit_to_str(put_place).unwrap(),e);
         put_boards.push((e, current_put_board, put_place));
     }
@@ -425,11 +446,11 @@ pub fn end_game_full_solver_nega_scout(board: &Board) -> u64{
         eprintln!("put: {}, nega scout score: {}",Board::move_bit_to_str(*put_place).unwrap(), score);
     }
 
-    let end = start.elapsed();
-    eprintln!("{}秒経過しました。", end.as_secs_f64());
+    // let end = start.elapsed();
+    // eprintln!("{}秒経過しました。", end.as_secs_f64());
     unsafe {
         eprintln!("searched nodes: {}", TCOUNT);
-        eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
+        // eprintln!("nps: {}", TCOUNT as f64/ end.as_secs_f64());
     }
     eprintln!("full solver: {}", alpha);
 
@@ -1230,7 +1251,7 @@ pub fn nega_alpha_move_ordering_mid_game(board: &mut Board, mut alpha: i32,beta:
     let mut moves = board.put_able();
     unsafe {TCOUNT += 1;}
 
-    if depth_rest < 4  {
+    if depth_rest < 6  {
         unsafe {TCOUNT -= 1;}
         return nega_alpha_mid_game(board, alpha, beta, depth_rest);
     }
@@ -1243,7 +1264,7 @@ pub fn nega_alpha_move_ordering_mid_game(board: &mut Board, mut alpha: i32,beta:
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        let e = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, depth_rest - 3);
+        let e = -nega_alpha_move_ordering_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, 2);
         put_board.push((e, current_put_board));
 
     }
@@ -1341,21 +1362,31 @@ pub fn nega_scout_mid_game(board: &mut Board, mut alpha: i32,beta: i32, depth_re
     }
 
     // move ordering
+
+    let ordering_depth;
+    if depth_rest > 10 {
+        ordering_depth = 4;
+    } else if depth_rest > 8 {
+        ordering_depth = 2;
+    }else{
+        ordering_depth = 2;
+    }
     
     let mut put_boards: Vec<(i32, Board)> = Vec::with_capacity(moves.count_ones() as usize);
+
     while moves != 0 {
         let put_place = (!moves + 1) & moves;
         moves &= moves - 1;
         let mut current_put_board = board.clone();
         current_put_board.put_piece_fast(put_place);
-        let e = -nega_scout_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, depth_rest - 3);
+        let e = -nega_scout_mid_game(&mut current_put_board, -SCORE_INF, SCORE_INF, ordering_depth);
         put_boards.push((e, current_put_board));
-
     }
     if put_boards.len() > 1{
         put_boards.sort_unstable_by(|(a,_), (b, _)| b.partial_cmp(a).unwrap());
     }
     
+
     let mut put_boards_iter = put_boards.iter_mut();
     let first_child_board = put_boards_iter.next().unwrap();
     let mut best_score =  -nega_scout_mid_game(&mut first_child_board.1, -beta, -alpha, depth_rest - 1);

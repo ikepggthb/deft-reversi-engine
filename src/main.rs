@@ -96,7 +96,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 fn ffo_test() -> Result<(),  std::io::Error> {
-    for i in 40..=50 {
+    for i in 39..=50 {
         let filename = format!("ffotest/end{}.pos", i);
         match read_ffo_test_files(&filename){
             Ok(board) => {

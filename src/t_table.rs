@@ -20,7 +20,7 @@ impl TableData {
     }
 }
 
-const TABLE_SIZE: usize = 1 << 20;
+const TABLE_SIZE: usize = 1 << 18;
 pub struct TranspositionTable {
     table: Vec::<TableData>,
     rand_table: Vec<Vec<u32>>
