@@ -5,3 +5,6 @@ log.txt
 output.txt
 0000_egaroucid_6_3_0_lv11
 ffotest
+flamegraph.svg
+test.perf
+perf*

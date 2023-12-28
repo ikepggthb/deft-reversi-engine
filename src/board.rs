@@ -91,9 +91,8 @@ impl Board {
         Ok(())
     }
 
-
     #[inline(always)]
-    pub fn put_piece_fast(&mut self, put_mask: u64){
+    pub fn reverse_bit(&self, put_mask: u64) -> u64{
 
         let player_board: u64 = self.bit_board[self.next_turn];
         let opponent_board: u64 = self.bit_board[self.next_turn ^ 1];
@@ -186,19 +185,27 @@ impl Board {
         if shifted_bit & player_board != 0 {
             reverse_bit |= prev_shifted_bit;
         }
+        reverse_bit
+    }
 
+    #[inline(always)]
+    pub fn put_piece_fast(&mut self, put_mask: u64){
 
-         // 石を置く
+        // ひっくり返す箇所を計算
+        let reverse_bit = self.reverse_bit(put_mask);
+        
+        // 石を置く
         self.bit_board[self.next_turn] |= put_mask;
 
         // ひっくり返す
         self.bit_board[0] ^= reverse_bit; // BLACK
         self.bit_board[1] ^= reverse_bit; // WHITE
 
-        // 次のターン
+        // 次のターンにする
         self.next_turn = self.next_turn ^ 1;
     }
 
+    
 
     pub fn put_able_old(&self) -> u64{
         let blank = !(self.bit_board[Board::BLACK] | self.bit_board[Board::WHITE]);
@@ -423,8 +430,8 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn move_count(&self) -> i32{
-        (self.bit_board[Board::BLACK].count_ones() + self.bit_board[Board::WHITE].count_ones() - 4) as i32
+    pub fn move_count(&self) -> i32{ // 現在何手目まで打たれたか(0~60)
+        (self.bit_board[Board::BLACK] | self.bit_board[Board::WHITE]).count_ones() as i32 - 4
     }
 
     pub fn print_board(&self) {
@@ -468,4 +475,12 @@ impl Board {
         let error_message = format!("put_place is undefind. (bit = {:0x})", bit);
         return Err(error_message);
     }
+
+    #[inline(always)]
+    fn piece_count(&self) -> i32
+    {
+        (self.bit_board[0] | self.bit_board[1]).count_ones() as i32
+    }
+
+
 }
