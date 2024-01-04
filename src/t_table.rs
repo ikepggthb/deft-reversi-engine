@@ -20,7 +20,7 @@ impl TableData {
     }
 }
 
-const TABLE_SIZE: usize = 1 << 18;
+const TABLE_SIZE: usize = 1 << 20;
 pub struct TranspositionTable {
     table: Vec::<TableData>,
     rand_table: Vec<Vec<u32>>
@@ -41,8 +41,8 @@ impl TranspositionTable {
         let mut table = vec![vec![0u32; TABLE_SIZE]; 8];
     
         for i in 0..8 {
-            for j in 0..TABLE_SIZE {
-                table[i][j] = rng.gen_range(0..(TABLE_SIZE- 1) as u32);
+            for j in 0..(1 << 16) {
+                table[i][j] = rng.gen_range(0..TABLE_SIZE as u32);
             }
         }
     
@@ -61,8 +61,7 @@ impl TranspositionTable {
             self.rand_table[4][((opponent_board_bit >> 48) & 0xFFFF) as usize] ^
             self.rand_table[5][((opponent_board_bit >> 32) & 0xFFFF) as usize] ^
             self.rand_table[6][((opponent_board_bit >> 16) & 0xFFFF) as usize] ^
-            self.rand_table[7][(opponent_board_bit & 0xFFFF) as usize]
-            ^ 0b1000100010001 )as usize
+            self.rand_table[7][(opponent_board_bit & 0xFFFF) as usize])as usize
     }
 
     #[inline(always)]
