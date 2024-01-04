@@ -91,108 +91,123 @@ impl Board {
         Ok(())
     }
 
-    #[inline(always)]
-    pub fn reverse_bit(&self, put_mask: u64) -> u64{
 
-        let player_board: u64 = self.bit_board[self.next_turn];
-        let opponent_board: u64 = self.bit_board[self.next_turn ^ 1];
-        let mut reverse_bit = 0u64;
+    #[inline(always)]
+    pub fn flip_bit(&self, x: u64) -> u64
+    {
+
+        let p: u64 = self.bit_board[self.next_turn];
+        let o: u64 = self.bit_board[self.next_turn ^ 1];
+        let mut flip = 0u64;
+
+        let maskd = o & 0x7e7e7e7e7e7e7e7e;
+        let mut flip1 =  (x << 1) & maskd;
+        flip1 |=  (flip1 << 1) & maskd;
+        flip1 |=  (flip1 << 1) & maskd;
+        flip1 |=  (flip1 << 1) & maskd;
+        flip1 |=  (flip1 << 1) & maskd;
+        flip1 |=  (flip1 << 1) & maskd;
+        flip1 |=  (flip1 << 1) & maskd;
+        let outflank = p & (flip1 << 1);
+        if outflank == 0 {flip1 = 0};
+        flip |= flip1;
+        
+        
+        // 逆方向
+        let mut flip2 =  (x >> 1) & maskd;
+        flip2 |=  (flip2 >> 1) & maskd;
+        flip2 |=  (flip2 >> 1) & maskd;
+        flip2 |=  (flip2 >> 1) & maskd;
+        flip2 |=  (flip2 >> 1) & maskd;
+        flip2 |=  (flip2 >> 1) & maskd;
+        flip2 |=  (flip2 >> 1) & maskd;
+        let outflank = p & (flip2 >> 1);
+        if outflank == 0 {flip2 = 0};
+        flip |= flip2;
 
         // 上下
-        let mut shifted_bit = (put_mask << 8) & 0xffffffffffffff00;
-        let mut prev_shifted_bit= 0u64;
-        while shifted_bit & opponent_board != 0u64 {
-            prev_shifted_bit |= shifted_bit;
-            shifted_bit = (shifted_bit << 8) & 0xffffffffffffff00;
-        }
-        if shifted_bit & player_board != 0 {
-            reverse_bit |= prev_shifted_bit;
-        }
+        let maskd = o & 0xffffffffffffff00;
+        let mut flip1 =  (x << 8) & maskd;
+        flip1 |=  (flip1 << 8) & maskd;
+        flip1 |=  (flip1 << 8) & maskd;
+        flip1 |=  (flip1 << 8) & maskd;
+        flip1 |=  (flip1 << 8) & maskd;
+        flip1 |=  (flip1 << 8) & maskd;
+        flip1 |=  (flip1 << 8) & maskd;
+        let outflank = p & (flip1 << 8);
+        if outflank == 0 {flip1 = 0};
+        flip |= flip1;
         
         // 逆方向
-        let mut shifted_bit = (put_mask >> 8) & 0x00ffffffffffffff;
-        let mut prev_shifted_bit = 0u64;
-        while shifted_bit & opponent_board != 0u64 {
-            prev_shifted_bit |= shifted_bit;
-            shifted_bit = (shifted_bit >> 8) & 0x00ffffffffffffff;
-        }
-        if shifted_bit & player_board != 0 {
-            reverse_bit |= prev_shifted_bit;
-        }
+        let mut flip2 =  (x >> 8) & maskd;
+        flip2 |=  (flip2 >> 8) & maskd;
+        flip2 |=  (flip2 >> 8) & maskd;
+        flip2 |=  (flip2 >> 8) & maskd;
+        flip2 |=  (flip2 >> 8) & maskd;
+        flip2 |=  (flip2 >> 8) & maskd;
+        flip2 |=  (flip2 >> 8) & maskd;
+        let outflank = p & (flip2 >> 8);
+        if outflank == 0 {flip2 = 0};
+        flip |= flip2;
 
         // 斜め
-        let mut shifted_bit = (put_mask << 7) & 0x7f7f7f7f7f7f7f00;
-        let mut prev_shifted_bit= 0u64;
-        while shifted_bit & opponent_board != 0u64 {
-            prev_shifted_bit |= shifted_bit;
-            shifted_bit = (shifted_bit << 7) & 0x7f7f7f7f7f7f7f00;
-        }
-        if shifted_bit & player_board != 0 {
-            reverse_bit |= prev_shifted_bit;
-        }
+        let maskd = o & 0x007e7e7e7e7e7e00;
+        let mut flip1 =  (x << 7) & maskd;
+        flip1 |=  (flip1 << 7) & maskd;
+        flip1 |=  (flip1 << 7) & maskd;
+        flip1 |=  (flip1 << 7) & maskd;
+        flip1 |=  (flip1 << 7) & maskd;
+        flip1 |=  (flip1 << 7) & maskd;
+        flip1 |=  (flip1 << 7) & maskd;
+        let outflank = p & (flip1 << 7);
+        if outflank == 0 {flip1 = 0};
+        flip |= flip1;
         
         // 逆方向
-        let mut shifted_bit = (put_mask >> 7) & 0x00fefefefefefefe;
-        let mut prev_shifted_bit = 0u64;
-        while shifted_bit & opponent_board != 0u64 {
-            prev_shifted_bit |= shifted_bit;
-            shifted_bit = (shifted_bit >> 7) & 0x00fefefefefefefe;
-        }
-        if shifted_bit & player_board != 0 {
-            reverse_bit |= prev_shifted_bit;
-        }
+        let mut flip2 =  (x >> 7) & maskd;
+        flip2 |=  (flip2 >> 7) & maskd;
+        flip2 |=  (flip2 >> 7) & maskd;
+        flip2 |=  (flip2 >> 7) & maskd;
+        flip2 |=  (flip2 >> 7) & maskd;
+        flip2 |=  (flip2 >> 7) & maskd;
+        flip2 |=  (flip2 >> 7) & maskd;
+        let outflank = p & (flip2 >> 7);
+        if outflank == 0 {flip2 = 0};
+        flip |= flip2;
 
-        // 左右
-        let mut shifted_bit = (put_mask << 1) & 0xfefefefefefefefe;
-        let mut prev_shifted_bit= 0u64;
-        while shifted_bit & opponent_board != 0u64 {
-            prev_shifted_bit |= shifted_bit;
-            shifted_bit = (shifted_bit << 1) & 0xfefefefefefefefe;
-        }
-        if shifted_bit & player_board != 0 {
-            reverse_bit |= prev_shifted_bit;
-        }
-        
-        // 逆方向
-        let mut shifted_bit = (put_mask >> 1) & 0x7f7f7f7f7f7f7f7f;
-        let mut prev_shifted_bit = 0u64;
-        while shifted_bit & opponent_board != 0u64 {
-            prev_shifted_bit |= shifted_bit;
-            shifted_bit = (shifted_bit >> 1) & 0x7f7f7f7f7f7f7f7f;
-        }
-        if shifted_bit & player_board != 0 {
-            reverse_bit |= prev_shifted_bit;
-        }
 
         // 斜め 2
-        let mut shifted_bit = (put_mask << 9) & 0xfefefefefefefe00;
-        let mut prev_shifted_bit= 0u64;
-        while shifted_bit & opponent_board != 0u64 {
-            prev_shifted_bit |= shifted_bit;
-            shifted_bit = (shifted_bit << 9) & 0xfefefefefefefe00;
-        }
-        if shifted_bit & player_board != 0 {
-            reverse_bit |= prev_shifted_bit;
-        }
+        let mut flip1 =  (x << 9) & maskd;
+        flip1 |=  (flip1 << 9) & maskd;
+        flip1 |=  (flip1 << 9) & maskd;
+        flip1 |=  (flip1 << 9) & maskd;
+        flip1 |=  (flip1 << 9) & maskd;
+        flip1 |=  (flip1 << 9) & maskd;
+        flip1 |=  (flip1 << 9) & maskd;
+        let outflank = p & (flip1 << 9);
+        if outflank == 0 {flip1 = 0};
+        flip |= flip1;
         
         // 逆方向
-        let mut shifted_bit = (put_mask >> 9) & 0x007f7f7f7f7f7f7f;
-        let mut prev_shifted_bit = 0u64;
-        while shifted_bit & opponent_board != 0u64 {
-            prev_shifted_bit |= shifted_bit;
-            shifted_bit = (shifted_bit >> 9) & 0x007f7f7f7f7f7f7f;
-        }
-        if shifted_bit & player_board != 0 {
-            reverse_bit |= prev_shifted_bit;
-        }
-        reverse_bit
+        let mut flip2 =  (x >> 9) & maskd;
+        flip2 |=  (flip2 >> 9) & maskd;
+        flip2 |=  (flip2 >> 9) & maskd;
+        flip2 |=  (flip2 >> 9) & maskd;
+        flip2 |=  (flip2 >> 9) & maskd;
+        flip2 |=  (flip2 >> 9) & maskd;
+        flip2 |=  (flip2 >> 9) & maskd;
+        let outflank = p & (flip2 >> 9);
+        if outflank == 0 {flip2 = 0};
+        flip |= flip2;
+
+        flip
     }
 
     #[inline(always)]
     pub fn put_piece_fast(&mut self, put_mask: u64){
 
         // ひっくり返す箇所を計算
-        let reverse_bit = self.reverse_bit(put_mask);
+        let reverse_bit = self.flip_bit(put_mask);
         
         // 石を置く
         self.bit_board[self.next_turn] |= put_mask;
@@ -205,173 +220,92 @@ impl Board {
         self.next_turn = self.next_turn ^ 1;
     }
 
-    
-
-    pub fn put_able_old(&self) -> u64{
-        let blank = !(self.bit_board[Board::BLACK] | self.bit_board[Board::WHITE]);
-
-        let player_turn = self.next_turn;
-        let opponent_turn = self.next_turn ^ 1;
-
-        let player_board: u64 = self.bit_board[player_turn];
-        let opponent_board: u64 = self.bit_board[opponent_turn];
-
-        let mut legal_moves = 0u64;
-
-        // 左右
-        let direction = 1; let mask = 0x7e7e7e7e7e7e7e7e;
-        let mut flipped_positions =  (player_board << direction) & mask & opponent_board;
-        for _ in 0..5 { 
-            flipped_positions |=  (flipped_positions << direction) & mask & opponent_board;
-        }
-        legal_moves |=  (flipped_positions << direction) & blank;
-        
-        // 逆方向
-        let mut flipped_positions =  (player_board >> direction) & mask & opponent_board;
-        for _ in 0..5 {
-            flipped_positions |=  (flipped_positions >> direction) & mask & opponent_board;
-        }
-        legal_moves |=  (flipped_positions >> direction) & blank;
-
-
-        // 上下
-        let direction = 8; let mask = 0xffffffffffffff00;
-        let mut flipped_positions =  (player_board << direction) & mask & opponent_board;
-        for _ in 0..5 { 
-            flipped_positions |=  (flipped_positions << direction) & mask & opponent_board;
-        }
-        legal_moves |=  (flipped_positions << direction) & blank;
-        
-        // 逆方向
-        let mut flipped_positions =  (player_board >> direction) & mask & opponent_board;
-        for _ in 0..5 {
-            flipped_positions |=  (flipped_positions >> direction) & mask & opponent_board;
-        }
-        legal_moves |=  (flipped_positions >> direction) & blank;
-
-
-        // 斜め
-        let direction = 7; let mask = 0x007e7e7e7e7e7e00;
-        let mut flipped_positions =  (player_board << direction) & mask & opponent_board;
-        for _ in 0..5 { 
-            flipped_positions |=  (flipped_positions << direction) & mask & opponent_board;
-        }
-        legal_moves |=  (flipped_positions << direction) & blank;
-        
-        // 逆方向
-        let mut flipped_positions =  (player_board >> direction) & mask & opponent_board;
-        for _ in 0..5 {
-            flipped_positions |=  (flipped_positions >> direction) & mask & opponent_board;
-        }
-        legal_moves |=  (flipped_positions >> direction) & blank;
-
-
-        // 斜め
-        let direction = 9; let mask = 0x007e7e7e7e7e7e00;
-        let mut flipped_positions =  (player_board << direction) & mask & opponent_board;
-        for _ in 0..5 { 
-            flipped_positions |=  (flipped_positions << direction) & mask & opponent_board;
-        }
-        legal_moves |=  (flipped_positions << direction) & blank;
-        
-        // 逆方向
-        let mut flipped_positions =  (player_board >> direction) & mask & opponent_board;
-        for _ in 0..5 {
-            flipped_positions |=  (flipped_positions >> direction) & mask & opponent_board;
-        }
-        legal_moves |=  (flipped_positions >> direction) & blank;
-
-        legal_moves
-
-    }
-
-    
     #[inline(always)]
     pub fn put_able(&self) -> u64{
         let blank = !(self.bit_board[Board::BLACK] | self.bit_board[Board::WHITE]);
 
-        let player_turn = self.next_turn;
-        let opponent_turn = self.next_turn ^ 1;
+        let p: u64 = self.bit_board[self.next_turn];
+        let o: u64 = self.bit_board[self.next_turn ^ 1];
 
         let mut legal_moves = 0u64;
 
         // 左右
-        let maskd = 0x7e7e7e7e7e7e7e7e & self.bit_board[opponent_turn];
-        let mut flipped_positions =  (self.bit_board[player_turn] << 1) & maskd;
-        flipped_positions |=  (flipped_positions << 1) & maskd;
-        flipped_positions |=  (flipped_positions << 1) & maskd;
-        flipped_positions |=  (flipped_positions << 1) & maskd;
-        flipped_positions |=  (flipped_positions << 1) & maskd;
-        flipped_positions |=  (flipped_positions << 1) & maskd;
-        legal_moves |=  (flipped_positions << 1) & blank;
+        let maskd = 0x7e7e7e7e7e7e7e7e & o;
+        let mut flip =  (p << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        legal_moves |=  (flip << 1) & blank;
         
         // 逆方向
-        let mut flipped_positions =  (self.bit_board[player_turn] >> 1) & maskd;
-        flipped_positions |=  (flipped_positions >> 1) & maskd;
-        flipped_positions |=  (flipped_positions >> 1) & maskd;
-        flipped_positions |=  (flipped_positions >> 1) & maskd;
-        flipped_positions |=  (flipped_positions >> 1) & maskd;
-        flipped_positions |=  (flipped_positions >> 1) & maskd;
-        legal_moves |=  (flipped_positions >> 1) & blank;
+        let mut flip =  (p >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        legal_moves |=  (flip >> 1) & blank;
 
 
         // 上下
-        let maskd = 0xffffffffffffff00 & self.bit_board[opponent_turn];
-        let mut flipped_positions =  (self.bit_board[player_turn] << 8) & maskd;
-        flipped_positions |=  (flipped_positions << 8) & maskd;
-        flipped_positions |=  (flipped_positions << 8) & maskd;
-        flipped_positions |=  (flipped_positions << 8) & maskd;
-        flipped_positions |=  (flipped_positions << 8) & maskd;
-        flipped_positions |=  (flipped_positions << 8) & maskd;
-        legal_moves |=  (flipped_positions << 8) & blank;
+        let maskd = 0xffffffffffffff00 & o;
+        let mut flip =  (p << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        legal_moves |=  (flip << 8) & blank;
         
         // 逆方向
-        let mut flipped_positions =  (self.bit_board[player_turn] >> 8) & maskd;
-        flipped_positions |=  (flipped_positions >> 8) & maskd;
-        flipped_positions |=  (flipped_positions >> 8) & maskd;
-        flipped_positions |=  (flipped_positions >> 8) & maskd;
-        flipped_positions |=  (flipped_positions >> 8) & maskd;
-        flipped_positions |=  (flipped_positions >> 8) & maskd;
-        legal_moves |=  (flipped_positions >> 8) & blank;
+        let mut flip =  (p >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        legal_moves |=  (flip >> 8) & blank;
 
 
         // 斜め
-        let maskd = 0x007e7e7e7e7e7e00 & self.bit_board[opponent_turn];
-        let mut flipped_positions =  (self.bit_board[player_turn] << 7) & maskd;
-        flipped_positions |=  (flipped_positions << 7) & maskd;
-        flipped_positions |=  (flipped_positions << 7) & maskd;
-        flipped_positions |=  (flipped_positions << 7) & maskd;
-        flipped_positions |=  (flipped_positions << 7) & maskd;
-        flipped_positions |=  (flipped_positions << 7) & maskd;
-        legal_moves |=  (flipped_positions << 7) & blank;
+        let maskd = 0x007e7e7e7e7e7e00 & o;
+        let mut flip =  (p << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        legal_moves |=  (flip << 7) & blank;
         
         // 逆方向
-        let mut flipped_positions =  (self.bit_board[player_turn] >> 7) & maskd;
-        flipped_positions |=  (flipped_positions >> 7) & maskd;
-        flipped_positions |=  (flipped_positions >> 7) & maskd;
-        flipped_positions |=  (flipped_positions >> 7) & maskd;
-        flipped_positions |=  (flipped_positions >> 7) & maskd;
-        flipped_positions |=  (flipped_positions >> 7) & maskd;
-        legal_moves |=  (flipped_positions >> 7) & blank;
+        let mut flip =  (p >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        legal_moves |=  (flip >> 7) & blank;
 
 
         // 斜め 2
-        let mut flipped_positions =  (self.bit_board[player_turn] << 9) & maskd;
-        flipped_positions |=  (flipped_positions << 9) & maskd;
-        flipped_positions |=  (flipped_positions << 9) & maskd;
-        flipped_positions |=  (flipped_positions << 9) & maskd;
-        flipped_positions |=  (flipped_positions << 9) & maskd;
-        flipped_positions |=  (flipped_positions << 9) & maskd;
-        legal_moves |=  (flipped_positions << 9) & blank;
+        let mut flip =  (p << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        legal_moves |=  (flip << 9) & blank;
         
         // 逆方向
-        let mut flipped_positions =  (self.bit_board[player_turn] >> 9) & maskd;
-        flipped_positions |=  (flipped_positions >> 9) & maskd;
-        flipped_positions |=  (flipped_positions >> 9) & maskd;
-        flipped_positions |=  (flipped_positions >> 9) & maskd;
-        flipped_positions |=  (flipped_positions >> 9) & maskd;
-        flipped_positions |=  (flipped_positions >> 9) & maskd;
-        legal_moves |=  (flipped_positions >> 9) & blank;
+        let mut flip =  (p >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        legal_moves |=  (flip >> 9) & blank;
 
         legal_moves
 

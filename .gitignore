@@ -8,3 +8,5 @@ ffotest
 flamegraph.svg
 test.perf
 perf*
+tmp*
+src/spnt.txt

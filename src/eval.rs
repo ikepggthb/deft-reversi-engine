@@ -5,6 +5,7 @@ use rand_xorshift::XorShiftRng;
 use crate::board;
 use crate::board::*;
 use crate::ai::*;
+use crate::perfect_solver;
 
 // use crate::bit::*;
 
@@ -336,7 +337,14 @@ impl Evaluator {
         }
 
         let is_end_white = board.next_turn == Board::WHITE ;
-        score = end_game_full_solver_nega_alpha_move_ordering_return_detail(&board).1;
+        // score = end_game_full_solver_nega_alpha_move_ordering_return_detail(&board).1;
+        
+        score = 
+            match perfect_solver(&board, true) {
+                Ok(sr) => sr.eval,
+                Err(_) => panic!()
+            };
+
         if is_end_white {
             score = -score;
         }

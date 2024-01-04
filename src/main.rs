@@ -4,12 +4,21 @@ mod bit;
 mod eval;
 mod learn;
 mod t_table;
+
+mod search;
+mod perfect_search;
+mod perfect_solver;
 // ---
 
 use eval::*;
 use ai::*;
 use board::*;
 use learn::*;
+
+use perfect_solver::*;
+
+
+use std::time;
 
 use std::error::Error;
 use std::io::{stdin, stdout, Write};
@@ -96,43 +105,38 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 fn ffo_test() -> Result<(),  std::io::Error> {
-    for i in 39..=50 {
+    for i in 40..=50 {
         let filename = format!("ffotest/end{}.pos", i);
-        match read_ffo_test_files(&filename){
-            Ok(board) => {
-                println!("#{} ", i);
-                board.print_board();
-                let re = (board.bit_board[Board::BLACK] | board.bit_board[Board::WHITE]).count_zeros();
-                println!("depth: {}", re);
-                //  let put_place = end_game_full_solver_nega_alpha_move_ordering(&board);
-                let put_place = end_game_full_solver_nega_scout(&board);
-                // let put_place = end_game_full_solver_mtd_f(&board);
-                
-                match move_bit_to_str(put_place) {
-                    Ok(s) => {
-                        println!("put place: {}", s);
-                    }
-                    Err(em) => {
-                        println!("{}", em);
-                    }
-                }
-                
-
-                println!();
-
-
-            },
+        let board = match read_ffo_test_files(&filename) {
+            Ok(it) => it,
             Err(err) => {
                 eprintln!("Error reading the file {}: {}", filename, err);
-            }
-        }
+                continue;
+            },
+        };
+    
+        println!("#{} ", i);
+
+        let now = time::Instant::now();
+        let solver_result = 
+            match winning_solver(&board, true) {
+                Ok(result) => result,
+                Err(e) => {
+                    eprintln!("Error occurred in perfect solver.");
+                    panic!();
+                }
+            };
+        
+        let end = now.elapsed();
+        println!("time: {:?}, nps: {}", end, solver_result.node_count as f64 / end.as_secs_f64());
+
+        
+        println!();
+
     }
 
     Ok(())
 }
-
-
-
 
 fn read_ffo_test_files<P: AsRef<Path>>(filename: P) -> io::Result<Board> {
     let file = File::open(filename)?;
@@ -155,7 +159,7 @@ fn read_ffo_test_files<P: AsRef<Path>>(filename: P) -> io::Result<Board> {
     }
     
     let second_line = lines.next().unwrap().unwrap();
-     println!("{}",first_line);
+    println!("{}",first_line);
     println!("{}",second_line);
     if second_line.contains("Black") {
         board.next_turn = Board::BLACK;
@@ -164,34 +168,6 @@ fn read_ffo_test_files<P: AsRef<Path>>(filename: P) -> io::Result<Board> {
     }
 
     Ok(board)
-}
-
-fn move_bit_to_str(bit: u64) -> Result<String, String> {
-    
-    for y in 0..8 {
-        for x in 0..8 {
-            let mask = 1u64 << y * 8 + x;
-            if mask == bit {
-                let mut result = String::new();
-                match x {
-                    0 => result.push('a'),
-                    1 => result.push('b'),
-                    2 => result.push('c'),
-                    3 => result.push('d'),
-                    4 => result.push('e'),
-                    5 => result.push('f'),
-                    6 => result.push('g'),
-                    7 => result.push('h'),
-                    _ => {}
-                }
-                result.push_str((y+1).to_string().as_str());
-                return Ok(result);
-            }
-        }
-    }
-
-    let error_message = format!("put_place is undefind. (bit = {:0x})", bit);
-    return Err(error_message);
 }
 
 fn main () {

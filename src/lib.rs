@@ -1,15 +1,19 @@
 
 pub mod board;
 pub mod ai;
+pub mod perfect_search;
+pub mod perfect_solver;
 mod bit;
 mod eval;
 mod learn;
+mod search;
 
 mod t_table;
 // ---
 
 pub use board::*;
 pub use ai::*;
+pub use perfect_solver::*;
 // use eval::*;
 // use learn::*;
 
