@@ -29,13 +29,14 @@ impl Board {
         self.next_turn = Board::BLACK;
     }
 
-
-    pub fn put_piece_from_coord(&mut self, y: i32, x: i32) -> Result<(), PutPieceErr> {
+    pub fn put_piece_from_coord(&mut self, y: i32, x: i32) -> Result<(), PutPieceErr>
+    {
         let mask = 1 << y * Board::BOARD_SIZE + x;
         self.put_piece(mask)
     }
 
-    pub fn put_piece(&mut self, put_mask: u64) -> Result<(), PutPieceErr> {
+    pub fn put_piece(&mut self, put_mask: u64) -> Result<(), PutPieceErr>
+    {
         if self.put_able() & put_mask == 0 {
             return Err(PutPieceErr::NoValidPlacement);
         }
@@ -91,11 +92,9 @@ impl Board {
         Ok(())
     }
 
-
     #[inline(always)]
     pub fn flip_bit(&self, x: u64) -> u64
     {
-
         let p: u64 = self.bit_board[self.next_turn];
         let o: u64 = self.bit_board[self.next_turn ^ 1];
         let mut flip = 0u64;
@@ -111,7 +110,6 @@ impl Board {
         let outflank = p & (flip1 << 1);
         if outflank == 0 {flip1 = 0};
         flip |= flip1;
-        
         
         // 逆方向
         let mut flip2 =  (x >> 1) & maskd;
@@ -175,7 +173,6 @@ impl Board {
         if outflank == 0 {flip2 = 0};
         flip |= flip2;
 
-
         // 斜め 2
         let mut flip1 =  (x << 9) & maskd;
         flip1 |=  (flip1 << 9) & maskd;
@@ -204,8 +201,8 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn put_piece_fast(&mut self, put_mask: u64){
-
+    pub fn put_piece_fast(&mut self, put_mask: u64)
+    {
         // ひっくり返す箇所を計算
         let reverse_bit = self.flip_bit(put_mask);
         
@@ -221,7 +218,8 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn put_able(&self) -> u64{
+    pub fn put_able(&self) -> u64
+    {
         let blank = !(self.bit_board[Board::BLACK] | self.bit_board[Board::WHITE]);
 
         let p: u64 = self.bit_board[self.next_turn];
@@ -312,7 +310,8 @@ impl Board {
     }
 
 
-    pub fn get_all_symmetries(&self) -> Vec<Board> {
+    pub fn get_all_symmetries(&self) -> Vec<Board>
+    {
         let mut symmetries = Vec::new();
 
         for i in 0b0000..0b1000 { // 2^3 = 8 different combinations
@@ -333,7 +332,8 @@ impl Board {
         }
         symmetries
     }
-    pub fn get_all_rotations(&self) -> Vec<Board> {
+    pub fn get_all_rotations(&self) -> Vec<Board>
+    {
         let mut rotations = Vec::new();
 
         let no_rotation = self.clone();
@@ -364,7 +364,8 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn move_count(&self) -> i32{ // 現在何手目まで打たれたか(0~60)
+    pub fn move_count(&self) -> i32
+    { // 現在何手目まで打たれたか(0~60)
         (self.bit_board[Board::BLACK] | self.bit_board[Board::WHITE]).count_ones() as i32 - 4
     }
 
@@ -383,7 +384,9 @@ impl Board {
             println!();
         }
     }
-    pub fn move_bit_to_str(bit: u64) -> Result<String, String> {
+
+    pub fn move_bit_to_str(bit: u64) -> Result<String, String>
+    {
         for y in 0..8 {
             for x in 0..8 {
                 let mask = 1u64 << y * 8 + x;
@@ -416,5 +419,10 @@ impl Board {
         (self.bit_board[0] | self.bit_board[1]).count_ones() as i32
     }
 
+    #[inline(always)]
+    pub fn empties_count(&self) -> i32
+    {
+        (self.bit_board[0] | self.bit_board[1]).count_zeros() as i32
+    }
 
 }

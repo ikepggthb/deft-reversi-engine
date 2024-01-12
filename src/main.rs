@@ -1,29 +1,19 @@
-mod ai;
+mod eval_simple;
 mod board;
 mod bit;
-mod eval;
-mod learn;
 mod t_table;
 
 mod search;
 mod perfect_search;
-mod perfect_solver;
+mod eval_search;
+mod solver;
 // ---
 
-use eval::*;
-use ai::*;
 use board::*;
-use learn::*;
-
-use perfect_solver::*;
-
+use solver::*;
 
 use std::time;
 
-use std::error::Error;
-use std::io::{stdin, stdout, Write};
-use std::thread;
-use std::sync::{Arc, Mutex};
 
 
 
@@ -119,7 +109,7 @@ fn ffo_test() -> Result<(),  std::io::Error> {
 
         let now = time::Instant::now();
         let solver_result = 
-            match winning_solver(&board, true) {
+            match perfect_solver(&board, true) {
                 Ok(result) => result,
                 Err(e) => {
                     eprintln!("Error occurred in perfect solver.");

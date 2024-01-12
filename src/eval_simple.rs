@@ -1,33 +1,8 @@
 use crate::board::*;
 use rand::Rng;
 
-#[allow(dead_code)]
-pub fn put_random_piece(board: &mut Board) -> Result<(), PutPieceErr> {
-    let legal_moves = board.put_able();
-    if legal_moves == 0 {
-        return Err(PutPieceErr::NoValidPlacement);
-    }
-
-    let mut bit_indices = [0; 64];
-    let mut count = 0;
-    let mut moves = legal_moves;
-    while moves != 0 {
-        let bit_index = moves.trailing_zeros();
-        bit_indices[count as usize] = bit_index;
-        count += 1;
-        moves &= moves - 1; 
-    }
-
-    let mut rng = rand::thread_rng();
-    let random_index = rng.gen_range(0..count);
-    let selected_bit_index = bit_indices[random_index as usize];
-
-    board.put_piece(1 << selected_bit_index)
-}
-
-
-
-pub fn simplest_eval (board: &Board) -> i32 {
+pub fn simplest_eval (board: &Board) -> i32 
+{
     const SCORES: [i32; 64] = [
         120, -40,  1,  0,  0,  1, -40, 120,
         -40, -60, -5, -4, -4, -5, -60, -40,
@@ -38,7 +13,6 @@ pub fn simplest_eval (board: &Board) -> i32 {
         -40, -60, -5, -4, -4, -5, -60, -40,
         120, -40,  1,  0,  0,  1, -40, 120,
     ];
-
 
     let m1 = [0x7E00000000000000u64, 0x1010101010100, 0x80808080808000, 0x7e];
     let m2 = [0x8100000000000000u64, 0x100000000000001, 0x8000000000000080, 0x81];
@@ -76,7 +50,6 @@ pub fn simplest_eval (board: &Board) -> i32 {
         place_score -= SCORES[bit_index];
     }
 
-
     let player_piece_count = player_board.count_ones() as i32;
     let opponent_piece_count = opponent_board.count_ones() as i32;
     let piece_count_score = 
@@ -91,9 +64,33 @@ pub fn simplest_eval (board: &Board) -> i32 {
 
     let mobility_score = player_mobility - opponent_mobility;
 
-    //// eprintln!("{}, {}, {}", score * 10, (player_mobility * 60 - opponent_mobility * 50), (opponent_piece_count - player_piece_count ) * 30);
     (place_score * 10 + mobility_score * 85 + piece_count_score * 40) / 40
 
+}
+
+
+#[allow(dead_code)]
+pub fn put_random_piece(board: &mut Board) -> Result<(), PutPieceErr> {
+    let legal_moves = board.put_able();
+    if legal_moves == 0 {
+        return Err(PutPieceErr::NoValidPlacement);
+    }
+
+    let mut bit_indices = [0; 64];
+    let mut count = 0;
+    let mut moves = legal_moves;
+    while moves != 0 {
+        let bit_index = moves.trailing_zeros();
+        bit_indices[count as usize] = bit_index;
+        count += 1;
+        moves &= moves - 1; 
+    }
+
+    let mut rng = rand::thread_rng();
+    let random_index = rng.gen_range(0..count);
+    let selected_bit_index = bit_indices[random_index as usize];
+
+    board.put_piece(1 << selected_bit_index)
 }
 
 pub fn put_eval_one_simple (board: &mut Board) -> Result<(), PutPieceErr> {
@@ -118,6 +115,5 @@ pub fn put_eval_one_simple (board: &mut Board) -> Result<(), PutPieceErr> {
     }
 
     board.put_piece(max_score_put_place)
-
 }
 

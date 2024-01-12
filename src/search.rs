@@ -1,17 +1,9 @@
 use crate::board::*;
-use crate::ai::*;
-use crate::t_table;
-use crate::t_table::TranspositionTable;
 use crate::eval_search::*;
+use crate::t_table::*;
 
 const SCORE_INF: i32 = 100000i32;
 
-
-#[inline(always)]
-pub fn num_of_empties(board: &Board) -> i32
-{
-    (board.bit_board[0] | board.bit_board[1]).count_zeros() as i32
-}
 
 /// 
 pub struct PutBoard {
@@ -49,7 +41,7 @@ pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32) -> Vec<P
         legal_moves &= legal_moves - 1;
         let mut put_board = board.clone();
         put_board.put_piece_fast(put_place);
-        let e = -negaalpha_eval_for_move_ordering(&put_board, -SCORE_INF, SCORE_INF, lv);
+        let e = -negaalpha_eval_for_move_ordering(&put_board, -SCORE_INF, SCORE_INF, lv-1);
         put_boards.push(PutBoard{eval: e, board: put_board, put_place: put_place});
     }
 

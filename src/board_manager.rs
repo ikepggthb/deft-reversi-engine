@@ -1,6 +1,5 @@
 use crate::Board;
 
-
 #[derive(Clone)]
 pub struct BoardManager {
     pub board_record: Vec<Board>

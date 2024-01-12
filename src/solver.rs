@@ -4,8 +4,6 @@ use crate::eval_search::*;
 use crate::search::*;
 use crate::t_table::*;
 
-// use std::time;
-
 pub struct SolverResult {
     pub best_move: u64,
     pub eval: i32,
@@ -20,10 +18,34 @@ pub enum SolverErr {
 const SCORE_INF: i32 = i32::MAX;
 const MOVE_ORDERING_EVAL_LEVEL: i32 = 6;
 
+
+/// オセロの盤面に対する完全な探索を行い、最適な手とその評価値を求める。
+///
+/// 終盤の探索で使用される。
+/// この関数は、Principal Variation Search (PVS)とNull Window Search (NWS)のアルゴリズムを使用して、
+/// 与えられたオセロの盤面に対して最も有利な手を決定します。
+///
+/// # 引数
+/// * `board` - 評価するオセロの盤面を表す `Board` オブジェクトの参照。
+/// * `print_log` - trueの場合、探索の進行状況と結果をコンソールに出力します。
+///
+/// # 戻り値
+/// `Result<SolverResult, SolverErr>` 型。成功した場合、`SolverResult`オブジェクトが含まれ、
+/// 最適な手とその評価値、探索したノード数、葉ノード数を含みます。
+/// 合法手が存在しない場合は、`SolverErr::NoMove`エラーが返されます。
+///
+/// # 例
+/// ```
+/// let board = Board::new(); // 初期盤面の生成
+/// match perfect_solver(&board, true) {
+///     Ok(result) => println!("Best move: {}, Score: {}", result.best_move, result.eval),
+///     Err(SolverErr::NoMove) => println!("No legal moves available."),
+///     _ => println!("An error occurred during the search.")
+/// }
+/// ```
+///
 pub fn perfect_solver(board: &Board, print_log: bool) -> Result<SolverResult, SolverErr>
 {
-    // let now = time::Instant::now();
-
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
@@ -33,13 +55,13 @@ pub fn perfect_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
-        println!("depth: {}", num_of_empties(board));
+        println!("depth: {}", board.empties_count());
         board.print_board();
     };
 
     if print_log {print!("move_ordering....");};
     let mut put_boards = 
-        if num_of_empties(board) < MOVE_ORDERING_EVAL_LEVEL {
+        if board.empties_count() < MOVE_ORDERING_EVAL_LEVEL {
             get_put_boards(board, legal_moves)
         } else {
             move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL)
@@ -76,13 +98,10 @@ pub fn perfect_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
         }
     }
 
-    // let end = now.elapsed();
     if print_log { 
         println!("best move: {}, score: {}{}",Board::move_bit_to_str(put_place_best_score).unwrap(), if alpha > 0 {"+"} else {""},alpha);
         println!("searched nodes: {}\nsearched leaf nodes: {}", search.node_count, search.leaf_node_count);
-        // println!("time: {:?}, nps: {}", end, search.node_count as f64 / end.as_secs_f64());
     }
-    
 
     Ok(SolverResult{
         best_move: put_place_best_score,
@@ -92,10 +111,26 @@ pub fn perfect_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
     })
 }
 
+/// オセロの盤面に対する勝利可能性を評価し、最適な手を決定する。
+///
+/// この関数は、Null Window Search (NWS) アルゴリズムを使用して、
+/// 現在の盤面から勝ち、引き分け、負けの結果をもたらす最適な手を判断します。
+/// 特に終盤の局面で有効です。
+///
+/// # 引数
+/// * `board` - 評価するオセロの盤面を表す `Board` オブジェクトの参照。
+/// * `print_log` - 真の場合、探索の進行状況と結果をコンソールに出力します。
+///
+/// # 戻り値
+/// `Result<SolverResult, SolverErr>` 型。成功した場合、`SolverResult`オブジェクトが含まれ、
+/// 最適な手とその評価値（勝ち:1、引き分け:0、負け:-1）、探索したノード数、葉ノード数を含みます。
+/// 合法手が存在しない場合は、`SolverErr::NoMove`エラーが返されます。
+///
+/// # 注記
+/// 探索過程の進行状況や結果の詳細な出力が必要な場合は、print_logパラメータをtrueに設定してください。これにより、
+/// 各手の評価値や探索したノードの数など、探索に関する詳細な情報が出力されます。
 pub fn winning_solver(board: &Board, print_log: bool) -> Result<SolverResult, SolverErr>
 {
-    // let now = time::Instant::now();
-
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
@@ -105,13 +140,13 @@ pub fn winning_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
-        println!("depth: {}", num_of_empties(board));
+        println!("depth: {}", board.empties_count());
         board.print_board();
     };
 
     if print_log {print!("move_ordering....");};
     let mut put_boards = 
-        if num_of_empties(board) < MOVE_ORDERING_EVAL_LEVEL {
+        if board.empties_count() < MOVE_ORDERING_EVAL_LEVEL {
             get_put_boards(board, legal_moves)
         } else {
             move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL)
@@ -186,13 +221,10 @@ pub fn winning_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
     if eval == -1 {
         put_place_best_score = put_boards[0].put_place;
     }
-    
 
-    // let end = now.elapsed();
     if print_log { 
         println!("best move: {}, score: {}",Board::move_bit_to_str(put_place_best_score).unwrap(), if eval > 0 {"Win"} else if eval < 0 {"Lose"} else {"Draw"});
         println!("searched nodes: {}\nsearched leaf nodes: {}", search.node_count, search.leaf_node_count);
-        // println!("time: {:?}, nps: {}", end, search.node_count as f64 / end.as_secs_f64());
     }
 
     Ok(SolverResult{
@@ -203,11 +235,28 @@ pub fn winning_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
     })
 }
 
-
+/// オセロの盤面に対する評価関数を用いた探索を行い、最適な手を決定する。
+///
+/// この関数は、評価関数に基づいて盤面のスコアを計算し、
+/// Principal Variation Search (PVS) および Null Window Search (NWS) アルゴリズムを使用して
+/// 最適な手を探索します。探索深度は引数 `lv` で指定されます。
+///
+/// # 引数
+/// * `board` - 評価するオセロの盤面を表す `Board` オブジェクトの参照。
+/// * `lv` - 探索の深さを表す整数値。
+/// * `print_log` - 真の場合、探索の進行状況と結果をコンソールに出力します。
+///
+/// # 戻り値
+/// `Result<SolverResult, SolverErr>` 型。成功した場合、`SolverResult`オブジェクトが含まれ、
+/// 最適な手とその評価値、探索したノード数、葉ノード数を含みます。
+/// 合法手が存在しない場合は、`SolverErr::NoMove`エラーが返されます。
+///
+/// # 注記
+/// この関数は複雑なアルゴリズムを用いて盤面の探索を行うため、計算に時間がかかる可能性があります。
+/// 探索の深さ (lv) は、盤面の複雑さや求める精度に応じて適切に設定する必要があります。
+/// また、print_logパラメータをtrueに設定することで、探索の進行状況や結果の詳細がコンソールに出力されます。
 pub fn eval_solver(board: &Board, lv: i32, print_log: bool) -> Result<SolverResult, SolverErr>
 {
-    // let now = time::Instant::now();
-
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
@@ -217,7 +266,7 @@ pub fn eval_solver(board: &Board, lv: i32, print_log: bool) -> Result<SolverResu
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
-        println!("depth: {}", num_of_empties(board));
+        println!("depth: {}", board.empties_count());
         board.print_board();
     };
 
@@ -226,7 +275,6 @@ pub fn eval_solver(board: &Board, lv: i32, print_log: bool) -> Result<SolverResu
         if lv - 4 <= 0 {
             get_put_boards(board, legal_moves)
         } else {
-            
             move_ordering_eval(board, legal_moves, 6)
         };
     if print_log {println!("OK");};
@@ -261,14 +309,11 @@ pub fn eval_solver(board: &Board, lv: i32, print_log: bool) -> Result<SolverResu
         }
     }
 
-    // let end = now.elapsed();
     if print_log { 
         println!("best move: {}, score: {}{}",Board::move_bit_to_str(put_place_best_score).unwrap(), if alpha > 0 {"+"} else {""},alpha);
         println!("searched nodes: {}\nsearched leaf nodes: {}", search.node_count, search.leaf_node_count);
-        // println!("time: {:?}, nps: {}", end, search.node_count as f64 / end.as_secs_f64());
     }
     
-
     Ok(SolverResult{
         best_move: put_place_best_score,
         eval: alpha,

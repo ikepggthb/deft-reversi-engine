@@ -1,5 +1,6 @@
 use crate::board::*;
 use crate::search::*;
+use crate::t_table::*;
 
 const SCORE_INF: i32 = i32::MAX;
 
@@ -87,7 +88,6 @@ pub fn solve_score_0_empties(board: &Board) -> i32
     2 * (board.bit_board[board.next_turn].count_ones() as i32) - 64
 }
 
-
 /// NegaAlpha法を用いて、完全読みを行い、オセロの盤面のスコアを計算する。
 ///
 /// 探索速度を向上させるため、葉に近いノードで使用される。
@@ -145,9 +145,6 @@ pub fn negaalpha_perfect(board: &Board, mut alpha: i32, beta: i32, search: &mut 
     best_score
 }
 
-
-
-
 /// 関数`pvs_perfect_simple`で用いられるヌルウィンドウ探索（Null Window Search, NWS）
 ///
 /// # 引数
@@ -166,7 +163,7 @@ pub fn nws_perfect_simple(board: &Board, mut alpha: i32, search: &mut Search) ->
     // 探索範囲: [alpha, beta]
     let beta = alpha + 1;
     
-    if num_of_empties(board) < SWITCH_EMPTIES_NEGA_ALPHA  {
+    if board.empties_count() < SWITCH_EMPTIES_NEGA_ALPHA  {
         return negaalpha_perfect(board, alpha, beta, search);
     }
 
@@ -225,7 +222,7 @@ pub fn nws_perfect_simple(board: &Board, mut alpha: i32, search: &mut Search) ->
 ///   スコアは現在のプレイヤーから見た盤面のスコアを表す。
 pub fn pvs_perfect_simple(board: &Board, alpha: i32,beta: i32, search: &mut Search) -> i32{
 
-    if num_of_empties(board) < SWITCH_EMPTIES_NEGA_ALPHA  {
+    if board.empties_count() < SWITCH_EMPTIES_NEGA_ALPHA  {
         return negaalpha_perfect(board, alpha, beta, search);
     }
 
@@ -303,7 +300,7 @@ pub fn nws_perfect(board: &Board, mut alpha: i32, search: &mut Search) -> i32
 {
     let mut beta = alpha + 1;
 
-    let n_empties = num_of_empties(board);
+    let n_empties = board.empties_count();
     if n_empties < SWITCH_EMPTIES_SIMPLE_NWS  {
         return nws_perfect_simple(board, alpha, search);
     }
@@ -395,11 +392,12 @@ pub fn nws_perfect(board: &Board, mut alpha: i32, search: &mut Search) -> i32
 /// * 置換表を使用して探索効率を向上させます。
 pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Search) -> i32
 {
-    let n_empties = num_of_empties(board);
+    let n_empties = board.empties_count();
     if n_empties < SWITCH_EMPTIES_SIMPLE_PVS  {
         return pvs_perfect_simple(board, alpha, beta, search);
     }
 
+    #[cfg(debug_assertions)]
     if alpha > beta { panic!()};
 
     if let None = search.t_table {
