@@ -1,6 +1,8 @@
 use crate::board::*;
 use crate::ai::*;
+use crate::t_table;
 use crate::t_table::TranspositionTable;
+use crate::eval_search::*;
 
 const SCORE_INF: i32 = 100000i32;
 
@@ -41,13 +43,13 @@ pub struct PutBoard {
 pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32) -> Vec<PutBoard>
 {
     let mut put_boards: Vec<PutBoard> = Vec::with_capacity(legal_moves.count_ones() as usize);
-
+    
     while legal_moves != 0 {
         let put_place = (!legal_moves + 1) & legal_moves;
         legal_moves &= legal_moves - 1;
         let mut put_board = board.clone();
         put_board.put_piece_fast(put_place);
-        let e =  -nega_scout_mid_game(&mut put_board.clone(), -SCORE_INF, SCORE_INF, lv);
+        let e = -negaalpha_eval_for_move_ordering(&put_board, -SCORE_INF, SCORE_INF, lv);
         put_boards.push(PutBoard{eval: e, board: put_board, put_place: put_place});
     }
 
@@ -100,6 +102,21 @@ pub fn move_ordering_ffs(board: &Board, mut legal_moves: u64) -> Vec<PutBoard>
     put_boards
 }
 
+#[inline(always)]
+pub fn get_put_boards(board: &Board, mut legal_moves: u64) -> Vec<PutBoard>
+{
+    let mut put_boards: Vec<PutBoard> = Vec::with_capacity(legal_moves.count_ones() as usize);
+
+    while legal_moves != 0 {
+        let put_place = (!legal_moves + 1) & legal_moves;
+        legal_moves &= legal_moves - 1;
+        let mut put_board = board.clone();
+        put_board.put_piece_fast(put_place);
+        put_boards.push(PutBoard{eval: 0, board: put_board, put_place: put_place})
+    }
+
+    put_boards
+}
 
 #[inline(always)]
 pub fn t_table_cut_off(
@@ -121,12 +138,12 @@ pub fn t_table_cut_off(
 pub struct Search {
     pub node_count: u64,
     pub leaf_node_count: u64,
-    pub t_table: TranspositionTable,
+    pub t_table: Option<TranspositionTable>,
     pub origin_board: Board,
 }
 
 impl Search {
-    pub fn new(board :&Board, t_table: TranspositionTable) -> Search{
+    pub fn new(board :&Board, t_table: Option<TranspositionTable>) -> Search{
         Search{
             node_count: 0,
             leaf_node_count: 0,

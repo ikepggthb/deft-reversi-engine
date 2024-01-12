@@ -38,7 +38,7 @@ impl TranspositionTable {
 
     fn gen_rand_table() -> Vec<Vec<u32>> {
         let mut rng = rand::thread_rng();
-        let mut table = vec![vec![0u32; TABLE_SIZE]; 8];
+        let mut table = vec![vec![0u32; 1 << 16]; 8];
     
         for i in 0..8 {
             for j in 0..(1 << 16) {

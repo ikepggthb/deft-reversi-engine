@@ -308,6 +308,10 @@ pub fn nws_perfect(board: &Board, mut alpha: i32, search: &mut Search) -> i32
         return nws_perfect_simple(board, alpha, search);
     }
 
+    if let None = search.t_table {
+        return nws_perfect_simple(board, alpha, search);
+    }
+
     // 探索範囲: [alpha, beta]
     let legal_moves: u64 = board.put_able();
 
@@ -326,7 +330,7 @@ pub fn nws_perfect(board: &Board, mut alpha: i32, search: &mut Search) -> i32
 
     search.node_count += 1;
 
-    if let Some(score) = t_table_cut_off(board, &mut alpha, &mut beta, &search.t_table) {
+    if let Some(score) = t_table_cut_off(board, &mut alpha, &mut beta, search.t_table.as_mut().unwrap()) {
         return score;
     }
 
@@ -345,7 +349,7 @@ pub fn nws_perfect(board: &Board, mut alpha: i32, search: &mut Search) -> i32
         let current_put_board = &current_put_board.board;
         let score = -nws_perfect(current_put_board, -beta, search);
         if score >= beta {
-            search.t_table.add(board, score, SCORE_INF);
+            search.t_table.as_mut().unwrap().add(board, score, SCORE_INF);
             return score;
         }
         this_node_alpha = this_node_alpha.max(score);
@@ -353,9 +357,9 @@ pub fn nws_perfect(board: &Board, mut alpha: i32, search: &mut Search) -> i32
     }
 
     if best_score > alpha {
-        search.t_table.add(board, best_score, best_score);
+        search.t_table.as_mut().unwrap().add(board, best_score, best_score);
     } else {
-        search.t_table.add(board, -SCORE_INF, best_score);
+        search.t_table.as_mut().unwrap().add(board, -SCORE_INF, best_score);
     }
 
     best_score
@@ -398,6 +402,10 @@ pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Sea
 
     if alpha > beta { panic!()};
 
+    if let None = search.t_table {
+        return pvs_perfect_simple(board, alpha, beta, search);
+    }
+
     // 探索範囲: [alpha, beta]
     let legal_moves = board.put_able();
 
@@ -420,7 +428,7 @@ pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Sea
     search.node_count += 1;
 
     // TranspositionTable Cut off
-    if let Some(score) = t_table_cut_off(board, &mut alpha, &mut beta, &search.t_table) {
+    if let Some(score) = t_table_cut_off(board, &mut alpha, &mut beta, search.t_table.as_mut().unwrap()) {
         return score;
     }
 
@@ -442,7 +450,7 @@ pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Sea
     let first_child_board = put_boards_iter.next().unwrap();
     best_score =  -pvs_perfect(&first_child_board.board, -beta, -this_node_alpha, search);
     if best_score >= beta { 
-        search.t_table.add(board, best_score, SCORE_INF);
+        search.t_table.as_mut().unwrap().add(board, best_score, SCORE_INF);
         return best_score;
     }
     this_node_alpha = this_node_alpha.max(best_score);
@@ -452,7 +460,7 @@ pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Sea
         let current_put_board = &current_put_board.board;
         let mut score = -nws_perfect(current_put_board, -this_node_alpha - 1, search);
         if score >= beta {
-            search.t_table.add(board, score, SCORE_INF);
+            search.t_table.as_mut().unwrap().add(board, score, SCORE_INF);
             return score;
         }
         if score > best_score {
@@ -461,7 +469,7 @@ pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Sea
             // 再探索
             score = -pvs_perfect(current_put_board, -beta, -this_node_alpha, search);
             if score >= beta { 
-                search.t_table.add(board, score, SCORE_INF);
+                search.t_table.as_mut().unwrap().add(board, score, SCORE_INF);
                 return score;
              }
              best_score = score;
@@ -470,9 +478,9 @@ pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Sea
     }
 
     if best_score > alpha { // alpha < best_score < beta
-        search.t_table.add(board, best_score, best_score);
+        search.t_table.as_mut().unwrap().add(board, best_score, best_score);
     } else { // best_score <= alpha
-        search.t_table.add(board, -SCORE_INF, best_score);
+        search.t_table.as_mut().unwrap().add(board, -SCORE_INF, best_score);
     }
 
     best_score
