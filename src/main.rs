@@ -7,6 +7,8 @@ mod search;
 mod perfect_search;
 mod eval_search;
 mod solver;
+
+mod eval;
 // ---
 
 use board::*;
@@ -161,8 +163,16 @@ fn read_ffo_test_files<P: AsRef<Path>>(filename: P) -> io::Result<Board> {
 }
 
 fn main () {
+    use eval::*;
+    use board::*;
+    let mut eval = Evaluator::new();
+    let mut b = Board::new();
+    eval.clac_features(&b);
+    let e = eval.clac_eval(&b);
+    println!("eval: {e}");
+    return;
+
     ffo_test();
-    //let mut eval = Evaluator::new();
 
     // let learn_move_count = 56;
     //  eval.learn_debug(learn_move_count);
