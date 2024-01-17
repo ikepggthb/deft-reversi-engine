@@ -64,7 +64,17 @@ pub fn simplest_eval (board: &Board) -> i32
 
     let mobility_score = player_mobility - opponent_mobility;
 
-    (place_score * 10 + mobility_score * 85 + piece_count_score * 40) / 40
+   
+    if player_mobility == 0 && opponent_mobility == 0 {
+        if player_piece_count > opponent_piece_count  {
+            1000
+        } else {
+            -1000
+        }
+    } else {
+         (place_score * 10 + mobility_score * 85 + piece_count_score * 40) / 40
+    }
+    
 
 }
 
