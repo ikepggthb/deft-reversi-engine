@@ -11,3 +11,4 @@ tmp*
 src/spnt.txt
 Egaroucid_Transcript
 output*
+out_rust_code.py

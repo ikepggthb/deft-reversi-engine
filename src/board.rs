@@ -11,6 +11,15 @@ pub enum PutPieceErr {
     Unknown(String)
 }
 
+impl Default for Board {
+    fn default() -> Self {
+        Board {
+            bit_board: [0x0000000810000000u64,0x0000001008000000u64],
+            next_turn: Board::BLACK
+        }
+    }
+}
+
 impl Board {
 
     pub const BOARD_SIZE: i32 = 8;
@@ -18,10 +27,7 @@ impl Board {
     pub const WHITE: usize = 1;
 
     pub fn new() -> Self {
-        Board {
-            bit_board: [0x0000000810000000u64,0x0000001008000000u64],
-            next_turn: Board::BLACK
-        }
+        Self::default()
     }
 
     pub fn clear(&mut self) {
@@ -31,7 +37,7 @@ impl Board {
 
     pub fn put_piece_from_coord(&mut self, y: i32, x: i32) -> Result<(), PutPieceErr>
     {
-        let mask = 1 << y * Board::BOARD_SIZE + x;
+        let mask = 1 << (y * Board::BOARD_SIZE + x);
         self.put_piece(mask)
     }
 
@@ -40,55 +46,7 @@ impl Board {
         if self.put_able() & put_mask == 0 {
             return Err(PutPieceErr::NoValidPlacement);
         }
-
-        // search reverse bit
-        let directions: [i32; 4] = [8, 7, 1, 9];
-        
-        let masks: [u64; 4] = [
-            0xffffffffffffff00,
-            0x7f7f7f7f7f7f7f00,
-            0xfefefefefefefefe,
-            0xfefefefefefefe00
-        ];
-
-        let rmasks: [u64; 4] = [
-            0x00ffffffffffffff,
-            0x00fefefefefefefe,
-            0x7f7f7f7f7f7f7f7f,
-            0x007f7f7f7f7f7f7f,
-            ];
-
-        let player_board: u64 = self.bit_board[self.next_turn];
-        let opponent_board: u64 = self.bit_board[self.next_turn ^ 1];
-        let mut reverse_bit = 0u64;
-
-        for ((direction, &mask), &rmask) in directions.iter().zip(&masks).zip(&rmasks) {
-            let mut shifted_bit = (put_mask << direction) & mask;
-            let mut prev_shifted_bit= 0u64;
-            while shifted_bit & opponent_board != 0u64 {
-                prev_shifted_bit |= shifted_bit;
-                shifted_bit = (shifted_bit << direction) & mask;
-            }
-            if shifted_bit & player_board != 0 {
-                reverse_bit |= prev_shifted_bit;
-            }
-
-            // 逆方向
-            let mut shifted_bit = (put_mask >> direction) & rmask;
-            let mut prev_shifted_bit = 0u64;
-            while shifted_bit & opponent_board != 0u64 {
-                prev_shifted_bit |= shifted_bit;
-                shifted_bit = (shifted_bit >> direction) & rmask;
-            }
-            if shifted_bit & player_board != 0 {
-                reverse_bit |= prev_shifted_bit;
-            }
-        }
-
-        self.bit_board[self.next_turn] |= put_mask;
-        self.bit_board[Board::BLACK] ^= reverse_bit;
-        self.bit_board[Board::WHITE] ^= reverse_bit;
-        self.next_turn = self.next_turn ^ 1;
+        self.put_piece_fast(put_mask);
         Ok(())
     }
 
@@ -214,7 +172,98 @@ impl Board {
         self.bit_board[1] ^= reverse_bit; // WHITE
 
         // 次のターンにする
-        self.next_turn = self.next_turn ^ 1;
+        self.next_turn ^= 1;
+    }
+
+    #[inline(always)]
+    pub fn opponent_put_able(&self) -> u64 {
+        let blank = !(self.bit_board[Board::BLACK] | self.bit_board[Board::WHITE]);
+
+        let p: u64 = self.bit_board[self.next_turn ^ 1];
+        let o: u64 = self.bit_board[self.next_turn];
+
+        let mut legal_moves = 0u64;
+
+        // 左右
+        let maskd = 0x7e7e7e7e7e7e7e7e & o;
+        let mut flip =  (p << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        flip |=  (flip << 1) & maskd;
+        legal_moves |=  (flip << 1) & blank;
+        
+        // 逆方向
+        let mut flip =  (p >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        flip |=  (flip >> 1) & maskd;
+        legal_moves |=  (flip >> 1) & blank;
+
+
+        // 上下
+        let maskd = 0xffffffffffffff00 & o;
+        let mut flip =  (p << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        flip |=  (flip << 8) & maskd;
+        legal_moves |=  (flip << 8) & blank;
+        
+        // 逆方向
+        let mut flip =  (p >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        flip |=  (flip >> 8) & maskd;
+        legal_moves |=  (flip >> 8) & blank;
+
+
+        // 斜め
+        let maskd = 0x007e7e7e7e7e7e00 & o;
+        let mut flip =  (p << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        flip |=  (flip << 7) & maskd;
+        legal_moves |=  (flip << 7) & blank;
+        
+        // 逆方向
+        let mut flip =  (p >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        flip |=  (flip >> 7) & maskd;
+        legal_moves |=  (flip >> 7) & blank;
+
+
+        // 斜め 2
+        let mut flip =  (p << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        flip |=  (flip << 9) & maskd;
+        legal_moves |=  (flip << 9) & blank;
+        
+        // 逆方向
+        let mut flip =  (p >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        flip |=  (flip >> 9) & maskd;
+        legal_moves |=  (flip >> 9) & blank;
+
+        legal_moves
+
     }
 
     #[inline(always)]
@@ -372,7 +421,7 @@ impl Board {
     pub fn print_board(&self) {
         for y in 0..8 {
             for x in 0..8 {
-                let mask = 1u64 << y * 8 + x;
+                let mask = 1u64 << (y * 8 + x);
                 if self.bit_board[Board::BLACK] & mask != 0 {
                     print!("X");
                 } else if self.bit_board[Board::WHITE] & mask != 0 {
@@ -389,7 +438,7 @@ impl Board {
     {
         for y in 0..8 {
             for x in 0..8 {
-                let mask = 1u64 << y * 8 + x;
+                let mask = 1u64 << (y * 8 + x);
                 if mask == bit {
                     let mut result = String::new();
                     match x {
@@ -410,7 +459,7 @@ impl Board {
         }
 
         let error_message = format!("put_place is undefind. (bit = {:0x})", bit);
-        return Err(error_message);
+        Err(error_message)
     }
 
     #[inline(always)]

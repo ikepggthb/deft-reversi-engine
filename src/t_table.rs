@@ -26,23 +26,28 @@ pub struct TranspositionTable {
     rand_table: Vec<Vec<u32>>
 }
 
-impl TranspositionTable {
-    pub fn new() -> Self{
+impl Default for TranspositionTable {
+    fn default() -> Self {
         let rand_table = Self::gen_rand_table();
         Self {
             table: vec![TableData::make_blank(); TABLE_SIZE],
-            rand_table: rand_table
+            rand_table
         }
+    }
+}
 
+impl TranspositionTable {
+    pub fn new() -> Self{
+        Self::default()
     }
 
     fn gen_rand_table() -> Vec<Vec<u32>> {
         let mut rng = rand::thread_rng();
         let mut table = vec![vec![0u32; 1 << 16]; 8];
     
-        for i in 0..8 {
-            for j in 0..(1 << 16) {
-                table[i][j] = rng.gen_range(0..TABLE_SIZE as u32);
+        for ti in table.iter_mut() {
+            for tij in ti.iter_mut(){
+                *tij = rng.gen_range(0..TABLE_SIZE as u32);
             }
         }
     
@@ -54,14 +59,16 @@ impl TranspositionTable {
         let player_board_bit = board.bit_board[Board::BLACK];
         let opponent_board_bit = board.bit_board[Board::WHITE];
 
-        return (self.rand_table[0][(player_board_bit & 0xFFFF) as usize] ^
+        (
+            self.rand_table[0][(player_board_bit & 0xFFFF) as usize] ^
             self.rand_table[1][((player_board_bit >> 16) & 0xFFFF) as usize] ^
             self.rand_table[2][((player_board_bit >> 32) & 0xFFFF) as usize] ^
             self.rand_table[3][((player_board_bit >> 48) & 0xFFFF) as usize] ^
             self.rand_table[4][((opponent_board_bit >> 48) & 0xFFFF) as usize] ^
             self.rand_table[5][((opponent_board_bit >> 32) & 0xFFFF) as usize] ^
             self.rand_table[6][((opponent_board_bit >> 16) & 0xFFFF) as usize] ^
-            self.rand_table[7][(opponent_board_bit & 0xFFFF) as usize])as usize
+            self.rand_table[7][(opponent_board_bit & 0xFFFF) as usize]
+        ) as usize
     }
 
     #[inline(always)]
@@ -70,22 +77,23 @@ impl TranspositionTable {
         self.table[index] = TableData {
             exists: true,
             board: board.clone(),
-            max: max,
-            min: min
+            max,
+            min
         }
     }
 
     #[inline(always)]
     pub fn get(&self, board: &Board) -> Option<&TableData>{
-        let index = self.hash_board(board) as usize;
+        let index = self.hash_board(board);
         let x = &self.table[index];
         if !x.exists {return None;}
+
         if x.board.bit_board[Board::BLACK] == board.bit_board[Board::BLACK] &&
            x.board.bit_board[Board::WHITE] == board.bit_board[Board::WHITE] &&
            x.board.next_turn == board.next_turn {
-            return Some(x);
+            Some(x)
         } else {
-            return None;
+            None
         }
     }
 }

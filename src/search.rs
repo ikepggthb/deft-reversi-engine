@@ -1,4 +1,5 @@
 use crate::board::*;
+use crate::eval::Evaluator;
 use crate::eval_search::*;
 use crate::t_table::*;
 
@@ -32,7 +33,7 @@ pub struct PutBoard {
 /// * `move_ordering_ffs`との違い
 ///   * `move_ordering_eval`は、評価値の高い順に並び替える。
 ///   * `move_ordering_ffs`は、相手の合法手が少ない順に並び替える。
-pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32) -> Vec<PutBoard>
+pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32, eval: &mut Evaluator) -> Vec<PutBoard>
 {
     let mut put_boards: Vec<PutBoard> = Vec::with_capacity(legal_moves.count_ones() as usize);
     
@@ -41,7 +42,7 @@ pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32) -> Vec<P
         legal_moves &= legal_moves - 1;
         let mut put_board = board.clone();
         put_board.put_piece_fast(put_place);
-        let e = -negaalpha_eval_for_move_ordering(&put_board, -SCORE_INF, SCORE_INF, lv-1);
+        let e = -negaalpha_eval_for_move_ordering(&put_board, -SCORE_INF, SCORE_INF, lv-1,  eval);
         put_boards.push(PutBoard{eval: e, board: put_board, put_place: put_place});
     }
 
@@ -127,20 +128,22 @@ pub fn t_table_cut_off(
     None
 }
 
-pub struct Search {
+pub struct Search<'a> {
     pub node_count: u64,
     pub leaf_node_count: u64,
     pub t_table: Option<TranspositionTable>,
     pub origin_board: Board,
+    pub eval_func: &'a mut Evaluator
 }
 
-impl Search {
-    pub fn new(board :&Board, t_table: Option<TranspositionTable>) -> Search{
+impl Search<'_> {
+    pub fn new<'a>(board :&Board, t_table: Option<TranspositionTable>, evaluator: &'a mut Evaluator) -> Search <'a>{
         Search{
             node_count: 0,
             leaf_node_count: 0,
             t_table: t_table,
-            origin_board: board.clone()
+            origin_board: board.clone(),
+            eval_func: evaluator
         }
     }
 }
