@@ -20,10 +20,10 @@ const SWITCH_EMPTIES_NEGA_ALPHA: i32 = 6;
 /// 空きマスが`SWITCH_EMPTIES_MOVE_ORDER`より多い場合、
 /// 評価関数とNegascout探索を用いた`move_ordering_eval`を使用する。
 /// SWITCH_EMPTIES_MOVE_ORDER以下である場合は、`move_ordering_ffs`を使用する。
-const SWITCH_EMPTIES_MOVE_ORDER: i32 = 18;
+const SWITCH_EMPTIES_MOVE_ORDER: i32 = 16;
 
 /// `pvs_perfect`, `nws_perfect`でのmove orderingにおいて、評価関数とNegascout探索を用いた`move_ordering_eval`を使用する場合の、探索の深さ
-const MOVE_ORDERING_EVAL_LEVEL: i32 = 4;
+const MOVE_ORDERING_EVAL_LEVEL: i32 = 3;
 
 /// オセロの盤面に基づいて最終スコアを計算
 ///
@@ -52,6 +52,10 @@ pub fn solve_score(board: &Board) -> i32 {
     let n_player = board.bit_board[board.next_turn].count_ones() as i32;
     let n_opponent = board.bit_board[board.next_turn^1].count_ones() as i32;
     let diff = n_player - n_opponent;
+
+    // https://github.com/rust-lang/rust-clippy/issues/5354
+    // 速度重視のため、match分ではなく、if文を使用
+    #[allow(clippy::comparison_chain)]
     if diff > 0 {
         let n_empties = 64 - n_player - n_opponent;
         diff + n_empties
@@ -115,14 +119,17 @@ pub fn negaalpha_perfect(board: &Board, mut alpha: i32, beta: i32, search: &mut 
 
     // 合法手がない
     if legal_moves == 0 {
-        let mut board = board.clone();
-        board.next_turn ^= 1; //pass
-        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
+        if board.opponent_put_able() == 0 { // passしても置くところがない == ゲーム終了
             search.node_count += 1;
             search.leaf_node_count += 1;
-            return  -solve_score(&board);
+            return solve_score(board);
         }
-        return -negaalpha_perfect(&board, -beta, -alpha, search);
+        let passed_board = {
+            let mut b = board.clone();
+            b.next_turn ^= 1;
+            b
+        };
+        return -negaalpha_perfect(&passed_board, -beta, -alpha, search);
     }
     
     // 探索範囲: [alpha, beta]
@@ -305,7 +312,7 @@ pub fn nws_perfect(board: &Board, mut alpha: i32, search: &mut Search) -> i32
         return nws_perfect_simple(board, alpha, search);
     }
 
-    if let None = search.t_table {
+    if search.t_table.is_none() {
         return nws_perfect_simple(board, alpha, search);
     }
 
@@ -334,7 +341,7 @@ pub fn nws_perfect(board: &Board, mut alpha: i32, search: &mut Search) -> i32
     // move ordering
     let put_boards = {
         if n_empties > SWITCH_EMPTIES_MOVE_ORDER {
-            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL)
+            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search.eval_func)
         } else {
             move_ordering_ffs(board, legal_moves)
         }
@@ -400,7 +407,7 @@ pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Sea
     #[cfg(debug_assertions)]
     if alpha > beta { panic!()};
 
-    if let None = search.t_table {
+    if search.t_table.is_none() {
         return pvs_perfect_simple(board, alpha, beta, search);
     }
 
@@ -433,7 +440,7 @@ pub fn pvs_perfect(board: &Board, mut alpha: i32,mut beta: i32, search: &mut Sea
     // move ordering
     let put_boards = {
         if n_empties > SWITCH_EMPTIES_MOVE_ORDER {
-            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL)
+            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search.eval_func)
         } else {
             move_ordering_ffs(board, legal_moves)
         }

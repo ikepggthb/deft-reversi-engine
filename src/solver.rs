@@ -3,6 +3,7 @@ use crate::perfect_search::*;
 use crate::eval_search::*;
 use crate::search::*;
 use crate::t_table::*;
+use crate::eval::*;
 
 pub struct SolverResult {
     pub best_move: u64,
@@ -44,14 +45,14 @@ const MOVE_ORDERING_EVAL_LEVEL: i32 = 6;
 /// }
 /// ```
 ///
-pub fn perfect_solver(board: &Board, print_log: bool) -> Result<SolverResult, SolverErr>
+pub fn perfect_solver(board: &Board, print_log: bool, evaluator: &mut Evaluator) -> Result<SolverResult, SolverErr>
 {
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
     }
 
-    let mut search = Search::new(board, Some(TranspositionTable::new()));
+    let mut search = Search::new(board, Some(TranspositionTable::new()), evaluator);
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
@@ -61,10 +62,10 @@ pub fn perfect_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
 
     if print_log {print!("move_ordering....");};
     let mut put_boards = 
-        if board.empties_count() < MOVE_ORDERING_EVAL_LEVEL {
+        if board.empties_count() < MOVE_ORDERING_EVAL_LEVEL + 2 {
             get_put_boards(board, legal_moves)
         } else {
-            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL)
+            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search.eval_func)
         };
     if print_log {println!("OK");};
 
@@ -74,7 +75,7 @@ pub fn perfect_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
     
     let mut put_boards_iter = put_boards.iter_mut();
     let first_child_board = put_boards_iter.next().unwrap();
-    alpha = -pvs_perfect(&mut first_child_board.board, -beta, -alpha, &mut search);
+    alpha = -pvs_perfect(&first_child_board.board, -beta, -alpha, &mut search);
     put_place_best_score = first_child_board.put_place;
     if print_log { 
         println!("put: {}, nega scout score: {}",Board::move_bit_to_str(put_place_best_score).unwrap(), alpha);
@@ -129,14 +130,14 @@ pub fn perfect_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
 /// # 注記
 /// 探索過程の進行状況や結果の詳細な出力が必要な場合は、print_logパラメータをtrueに設定してください。これにより、
 /// 各手の評価値や探索したノードの数など、探索に関する詳細な情報が出力されます。
-pub fn winning_solver(board: &Board, print_log: bool) -> Result<SolverResult, SolverErr>
+pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator) -> Result<SolverResult, SolverErr>
 {
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
     }
 
-    let mut search = Search::new(board, Some(TranspositionTable::new()));
+    let mut search = Search::new(board, Some(TranspositionTable::new()), evaluator);
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
@@ -146,10 +147,10 @@ pub fn winning_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
 
     if print_log {print!("move_ordering....");};
     let mut put_boards = 
-        if board.empties_count() < MOVE_ORDERING_EVAL_LEVEL {
+        if board.empties_count() < MOVE_ORDERING_EVAL_LEVEL + 2 {
             get_put_boards(board, legal_moves)
         } else {
-            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL)
+            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search.eval_func)
         };
     if print_log {println!("OK");};
 
@@ -229,7 +230,7 @@ pub fn winning_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
 
     Ok(SolverResult{
         best_move: put_place_best_score,
-        eval: eval,
+        eval,
         node_count: search.node_count,
         leaf_node_count: search.leaf_node_count
     })
@@ -255,14 +256,14 @@ pub fn winning_solver(board: &Board, print_log: bool) -> Result<SolverResult, So
 /// この関数は複雑なアルゴリズムを用いて盤面の探索を行うため、計算に時間がかかる可能性があります。
 /// 探索の深さ (lv) は、盤面の複雑さや求める精度に応じて適切に設定する必要があります。
 /// また、print_logパラメータをtrueに設定することで、探索の進行状況や結果の詳細がコンソールに出力されます。
-pub fn eval_solver(board: &Board, lv: i32, print_log: bool) -> Result<SolverResult, SolverErr>
+pub fn eval_solver(board: &Board, lv: i32, print_log: bool, evaluator : &mut Evaluator) -> Result<SolverResult, SolverErr>
 {
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
     }
 
-    let mut search = Search::new(board, Some(TranspositionTable::new()));
+    let mut search = Search::new(board, Some(TranspositionTable::new()), evaluator);
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
@@ -272,10 +273,10 @@ pub fn eval_solver(board: &Board, lv: i32, print_log: bool) -> Result<SolverResu
 
     if print_log {print!("move_ordering....");};
     let put_boards = 
-        if lv - 4 <= 0 {
+        if lv - 5 <= 0 {
             get_put_boards(board, legal_moves)
         } else {
-            move_ordering_eval(board, legal_moves, 6)
+            move_ordering_eval(board, legal_moves, lv - 3,  search.eval_func)
         };
     if print_log {println!("OK");};
 

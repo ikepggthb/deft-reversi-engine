@@ -59,7 +59,7 @@ pub fn simplest_eval (board: &Board) -> i32
     
     let player_mobility = board.put_able().count_ones() as i32;
     let mut board = board.clone();
-    board.next_turn = board.next_turn ^ 1;
+    board.next_turn ^= 1;
     let opponent_mobility = board.put_able().count_ones() as i32;
 
     let mobility_score = player_mobility - opponent_mobility;
@@ -114,7 +114,7 @@ pub fn put_eval_one_simple (board: &mut Board) -> Result<(), PutPieceErr> {
         let put_place = (!moves + 1) & moves; //最も小さい位のbitをマスクする
         moves &= moves - 1; // 最も小さい位のbitを消す
         virt_board.put_piece(put_place)?;   
-        let current_score: i32 = -simplest_eval(&mut virt_board);
+        let current_score: i32 = -simplest_eval(&virt_board);
         if current_score > max_score {
             max_score = current_score;
             max_score_put_place = put_place;

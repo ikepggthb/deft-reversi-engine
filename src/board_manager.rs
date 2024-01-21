@@ -1,15 +1,21 @@
-use crate::Board;
+use crate::board::Board;
 
 #[derive(Clone)]
 pub struct BoardManager {
     pub board_record: Vec<Board>
 }
 
-impl BoardManager {
-    pub fn new() -> Self {
+impl Default for BoardManager {
+    fn default() -> Self {    
         let mut bm = Self { board_record: Vec::new() };
         bm.board_record.push(Board::new());
         bm
+    }
+}
+
+impl BoardManager {
+    pub fn new() -> Self {
+        Self::default()
     }
     
     pub fn current_board(&self) -> Board {

@@ -1,14 +1,14 @@
 use crate::board::*;
+use crate::eval::Evaluator;
 use crate::search::*;
-use crate::eval_simple::*;
 use crate::t_table::*;
 
-const SCORE_INF: i32 = 10000;
+const SCORE_INF: i32 = i32::MAX;
 
 const MOVE_ORDERING_EVAL_LEVEL: i32 = 2;
 const MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH: i32 = 1;
 const SWITCH_SIMPLE_SEARCH_LEVEL: i32 = 8;
-const SWITCH_NEGAALPHA_SEARCH_LEVEL: i32 = 7;
+const SWITCH_NEGAALPHA_SEARCH_LEVEL: i32 = 6;
 
 
 /// NegaAlpha法を用いて、オセロの盤面の評価値を計算する。
@@ -26,10 +26,11 @@ const SWITCH_NEGAALPHA_SEARCH_LEVEL: i32 = 7;
 /// * 探索結果として計算された盤面のスコアを表す整数値。
 ///   スコアは現在のプレイヤーから見た盤面のスコアを表す。
 ///
-pub fn negaalpha_eval_for_move_ordering(board: &Board, mut alpha: i32, beta: i32, lv: i32) -> i32
+pub fn negaalpha_eval_for_move_ordering(board: &Board, mut alpha: i32, beta: i32, lv: i32, eval: &mut Evaluator) -> i32
 {    
     if lv <= 0 {
-        return simplest_eval(board);
+        // return simplest_eval(board);
+        return  eval.clac_features_eval(board);
     }
 
     let mut legal_moves = board.put_able();
@@ -39,9 +40,10 @@ pub fn negaalpha_eval_for_move_ordering(board: &Board, mut alpha: i32, beta: i32
         let mut board = board.clone();
         board.next_turn ^= 1; //pass
         if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
-            return  -simplest_eval(&board);
+            board.next_turn ^= 1;
+            return  eval.clac_features_eval(&board);
         }
-        return -negaalpha_eval_for_move_ordering(&board, -beta, -alpha, lv);
+        return -negaalpha_eval_for_move_ordering(&board, -beta, -alpha, lv, eval);
     }
     
     // 探索範囲: [alpha, beta]
@@ -52,7 +54,7 @@ pub fn negaalpha_eval_for_move_ordering(board: &Board, mut alpha: i32, beta: i32
         let put_place = (!legal_moves + 1) & legal_moves;
         legal_moves &= legal_moves - 1; // bitを削除
         current_board.put_piece_fast(put_place);
-        let score = -negaalpha_eval_for_move_ordering(&current_board, -beta, -alpha, lv - 1);
+        let score = -negaalpha_eval_for_move_ordering(&current_board, -beta, -alpha, lv - 1, eval);
         if score >= beta {
             return score;
         }
@@ -84,7 +86,7 @@ pub fn negaalpha_eval(board: &Board, mut alpha: i32, beta: i32, lv: i32, search:
     if lv == 0 {
         search.node_count += 1;
         search.leaf_node_count += 1;
-        return simplest_eval(board);
+        return search.eval_func.clac_features_eval(board);
     }
 
     let mut legal_moves = board.put_able();
@@ -96,7 +98,10 @@ pub fn negaalpha_eval(board: &Board, mut alpha: i32, beta: i32, lv: i32, search:
         if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
             search.node_count += 1;
             search.leaf_node_count += 1;
-            return  -simplest_eval(&board);
+            
+            board.next_turn ^= 1;
+            return search.eval_func.clac_features_eval(&board);
+            //return  -implest_eval(&board);
         }
         return -negaalpha_eval(&board, -beta, -alpha, lv, search);
     }
@@ -157,7 +162,8 @@ pub fn nws_eval_simple(board: &Board, mut alpha: i32, lv: i32, search: &mut Sear
             board.next_turn ^= 1;
             search.node_count += 1;
             search.leaf_node_count += 1;
-            return simplest_eval(&board);
+            return search.eval_func.clac_features_eval(&board);
+            // return simplest_eval(&board);
         }
         search.node_count += 1;
         return -nws_eval_simple(&board, -beta, lv, search);
@@ -166,7 +172,7 @@ pub fn nws_eval_simple(board: &Board, mut alpha: i32, lv: i32, search: &mut Sear
     search.node_count += 1;
 
     // move ordering
-    let put_boards = move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH);
+    let put_boards = move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH, search.eval_func);
 
     let mut this_node_alpha = alpha;
     let mut best_score = i32::MIN;
@@ -224,7 +230,8 @@ pub fn pvs_eval_simple(board: &Board, mut alpha: i32,mut beta: i32, lv: i32, sea
             board.next_turn ^= 1;
             search.node_count += 1;
             search.leaf_node_count += 1;
-            return simplest_eval(&mut board);
+            return search.eval_func.clac_features_eval(&board);
+            // return simplest_eval(&mut board);
         }
 
         // passしたら、合法手がある -> 探索を続ける
@@ -235,7 +242,7 @@ pub fn pvs_eval_simple(board: &Board, mut alpha: i32,mut beta: i32, lv: i32, sea
     search.node_count += 1;
 
     // move ordering
-    let put_boards =  move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH);
+    let put_boards =  move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH, search.eval_func);
 
     let mut put_boards_iter = put_boards.iter();
     
@@ -300,7 +307,7 @@ pub fn nws_eval(board: &Board, mut alpha: i32, lv: i32, search: &mut Search) -> 
         return nws_eval_simple(board, alpha, lv, search);
     }
 
-    if let None = search.t_table {
+    if search.t_table.is_none() {
         return nws_eval_simple(board, alpha, lv, search)
     }
 
@@ -314,7 +321,8 @@ pub fn nws_eval(board: &Board, mut alpha: i32, lv: i32, search: &mut Search) -> 
             board.next_turn ^= 1;
             search.node_count += 1;
             search.leaf_node_count += 1;
-            return simplest_eval(&board);
+            return search.eval_func.clac_features_eval(&board);
+            // return simplest_eval(&board);
         }
         search.node_count += 1;
         return -nws_eval(&board, -beta, lv, search);
@@ -328,7 +336,7 @@ pub fn nws_eval(board: &Board, mut alpha: i32, lv: i32, search: &mut Search) -> 
     }
     
     // move ordering
-    let put_boards = move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL);
+    let put_boards = move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL, search.eval_func);
 
     let mut this_node_alpha = alpha;
     let mut best_score = i32::MIN;
@@ -400,7 +408,7 @@ pub fn pvs_eval ( board     : &Board,
     #[cfg(debug_assertions)]
     if alpha > beta { panic!()};
 
-    if let None = search.t_table {
+    if search.t_table.is_none() {
         return pvs_eval_simple(board, alpha, beta, lv, search);
     }
 
@@ -415,7 +423,8 @@ pub fn pvs_eval ( board     : &Board,
             board.next_turn ^= 1;
             search.node_count += 1;
             search.leaf_node_count += 1;
-            return simplest_eval(&board);
+            return search.eval_func.clac_features_eval(&board);
+            // return simplest_eval(&board);
         }
 
         // passしたら、合法手がある -> 探索を続ける
@@ -453,7 +462,7 @@ pub fn pvs_eval ( board     : &Board,
     }
 
     // move ordering
-    let put_boards =  move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL);
+    let put_boards =  move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search.eval_func);
 
     let mut put_boards_iter = put_boards.iter();
     
