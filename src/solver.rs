@@ -17,7 +17,7 @@ pub enum SolverErr {
 }
 
 const SCORE_INF: i32 = i32::MAX;
-const MOVE_ORDERING_EVAL_LEVEL: i32 = 6;
+const MOVE_ORDERING_EVAL_LEVEL: i32 = 8;
 
 
 /// オセロの盤面に対する完全な探索を行い、最適な手とその評価値を求める。
@@ -65,7 +65,7 @@ pub fn perfect_solver(board: &Board, print_log: bool, evaluator: &mut Evaluator)
         if board.empties_count() < MOVE_ORDERING_EVAL_LEVEL + 2 {
             get_put_boards(board, legal_moves)
         } else {
-            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search.eval_func)
+            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  &mut search)
         };
     if print_log {println!("OK");};
 
@@ -150,7 +150,7 @@ pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator
         if board.empties_count() < MOVE_ORDERING_EVAL_LEVEL + 2 {
             get_put_boards(board, legal_moves)
         } else {
-            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search.eval_func)
+            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  &mut search)
         };
     if print_log {println!("OK");};
 
@@ -276,7 +276,7 @@ pub fn eval_solver(board: &Board, lv: i32, print_log: bool, evaluator : &mut Eva
         if lv - 5 <= 0 {
             get_put_boards(board, legal_moves)
         } else {
-            move_ordering_eval(board, legal_moves, lv - 3,  search.eval_func)
+            move_ordering_eval(board, legal_moves, lv - 3,  &mut search)
         };
     if print_log {println!("OK");};
 

@@ -1,5 +1,5 @@
 use crate::board::*;
-use rand::Rng;
+use rand::{seq::index, Rng};
 
 #[derive(Clone)]
 pub struct TableData {
@@ -95,5 +95,18 @@ impl TranspositionTable {
         } else {
             None
         }
+    }
+
+
+    #[inline(always)]
+    pub fn exists(&self, board: &Board) -> bool
+    {
+        let index = self.hash_board(board);
+        let t = &self.table[index];
+        if !t.exists {return false;}
+
+        t.board.bit_board[Board::BLACK] == board.bit_board[Board::BLACK] &&
+        t.board.bit_board[Board::WHITE] == board.bit_board[Board::WHITE] &&
+        t.board.next_turn == board.next_turn
     }
 }

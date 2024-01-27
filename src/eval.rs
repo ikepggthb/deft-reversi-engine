@@ -378,7 +378,8 @@ pub mod evaluator_const {
 
     
     pub const N_FEATURE_MAX: usize = P3_10 as usize;
-    pub const N_MOBILITY_MAX: usize = 50;
+    pub const N_MOBILITY_MAX: usize = 128;
+    pub const N_MOBILITY_BASE: usize = 64;
     pub const N_PHASE: usize = 31;
     
 }
@@ -389,8 +390,7 @@ use evaluator_const::*;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct EvaluationScores {
     pub pattern_eval: Vec<Vec<i16>>,
-    pub player_mobility_eval: Vec<i16>,
-    pub opponent_mobility_eval: Vec<i16>,
+    pub mobility_eval: Vec<i16>,
     pub const_eval: i16
 }
 
@@ -408,9 +408,20 @@ pub struct Evaluator {
 impl Default for EvaluationScores {
     fn default() -> Self {        
         Self{
-            pattern_eval: vec![vec![0;N_FEATURE_MAX];N_PATTERN],
-            player_mobility_eval: vec![0; N_MOBILITY_MAX],
-            opponent_mobility_eval: vec![0; N_MOBILITY_MAX],
+            pattern_eval: vec![
+                vec![0;N_FEATURE_POSITIONS[0]],
+                vec![0;N_FEATURE_POSITIONS[1]],
+                vec![0;N_FEATURE_POSITIONS[2]],
+                vec![0;N_FEATURE_POSITIONS[3]],
+                vec![0;N_FEATURE_POSITIONS[4]],
+                vec![0;N_FEATURE_POSITIONS[5]],
+                vec![0;N_FEATURE_POSITIONS[6]],
+                vec![0;N_FEATURE_POSITIONS[7]],
+                vec![0;N_FEATURE_POSITIONS[8]],
+                vec![0;N_FEATURE_POSITIONS[9]],
+                vec![0;N_FEATURE_POSITIONS[10]]
+                ],
+            mobility_eval: vec![0; N_MOBILITY_MAX],
             const_eval: 0,
         } 
     }
@@ -472,17 +483,18 @@ impl Evaluator {
             let f = &self.feature_bit[pattern];
 
             // for each rotaion
-            evaluation += e[f[0] as usize] as i32;
-            evaluation += e[f[1] as usize] as i32;
-            evaluation += e[f[2] as usize] as i32;
-            evaluation += e[f[3] as usize] as i32;
+            evaluation += e[f[0] as usize] as i32 
+                            + e[f[1] as usize] as i32
+                            + e[f[2] as usize] as i32
+                            + e[f[3] as usize] as i32;
         }
 
-        let player_mobility = board.put_able().count_ones();
-        let opponent_mobility = board.opponent_put_able().count_ones();
+        let mobility = 
+            N_MOBILITY_BASE 
+            + board.put_able().count_ones() as usize 
+            - board.opponent_put_able().count_ones() as usize;
 
-        evaluation += eval_scores.player_mobility_eval[player_mobility as usize] as i32;
-        evaluation += eval_scores.opponent_mobility_eval[opponent_mobility as usize] as i32;
+        evaluation += eval_scores.mobility_eval[mobility] as i32;
         evaluation += eval_scores.const_eval as i32;
 
         evaluation
@@ -518,9 +530,9 @@ impl Evaluator {
         Ok(deserialized)
     }
 
-    pub fn read_string(input: String) -> std::io::Result<Evaluator>
+    pub fn read_string(input: &str) -> std::io::Result<Evaluator>
     {
-        let deserialized: Evaluator = serde_json::from_str(&input).unwrap();
+        let deserialized: Evaluator = serde_json::from_str(input).unwrap();
         Ok(deserialized)
     }
 }
