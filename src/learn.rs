@@ -1,5 +1,5 @@
 
-use crate::board_manager::*;
+use crate::{board_manager::*, learn};
 use crate::{board::Board, perfect_search::solve_score};
 use serde::{Deserialize, Serialize};
 
@@ -122,9 +122,10 @@ fn gen_training_data(filename: &str) -> Vec<Training> {
 
 fn supervised_learning(evaluator: &mut EvaluatorForLearn) {
     
-    let learning_rate = 5.0;
+    let mut learning_rate = 0.00004;
+    let lambda = 0.000002;
     let mut training_data = Vec::new();
-    for i in 0..20 {
+    for i in 0..200 {
         let filename = format!("0000_egaroucid_6_3_0_lv11/0000{i:0>3}.txt");
         training_data.append(&mut gen_training_data(&filename));
     }
@@ -142,11 +143,11 @@ fn supervised_learning(evaluator: &mut EvaluatorForLearn) {
             for board in training_datum.bm.board_record.iter() {
                 // each 局面
                 let move_count = board.move_count() as usize;
-
+                if move_count < 2 {continue;}
+                let learning_rate = if move_count < 20 {learning_rate / 3.0} else {learning_rate};
                 let phase = move_count / 2;
 
                 evaluator.clac_features(board);
-
                 let eval = evaluator.clac_eval(board);
 
                 let diff_eval_score = eval - correct_score[board.next_turn] as f64;
@@ -161,28 +162,24 @@ fn supervised_learning(evaluator: &mut EvaluatorForLearn) {
                     let n_positions = N_FEATURE_POSITIONS[pattern] as f64;
 
                     // each rotation boards
-                    e[f[0] as usize] += -2f64 * diff_eval_score * learning_rate / n_positions;
-                    e[f[1] as usize] += -2f64 * diff_eval_score * learning_rate / n_positions;
-                    e[f[2] as usize] += -2f64 * diff_eval_score * learning_rate / n_positions;
-                    e[f[3] as usize] += -2f64 * diff_eval_score * learning_rate / n_positions;
+                    e[f[0] as usize] += -2f64 * diff_eval_score * learning_rate - 2f64 * lambda * e[f[0] as usize];
+                    e[f[1] as usize] += -2f64 * diff_eval_score * learning_rate - 2f64 * lambda * e[f[1] as usize];
+                    e[f[2] as usize] += -2f64 * diff_eval_score * learning_rate - 2f64 * lambda * e[f[2] as usize];
+                    e[f[3] as usize] += -2f64 * diff_eval_score * learning_rate - 2f64 * lambda * e[f[3] as usize];
                 }
 
-                let player_mobility = board.put_able().count_ones();
-                let opponent_mobility = {
-                    let mut b = board.clone();
-                    b.next_turn ^= 1;
-                    b.put_able().count_ones()
-                };
+                let mobility = 
+                    N_MOBILITY_BASE 
+                    + board.put_able().count_ones() as usize 
+                    - board.opponent_put_able().count_ones() as usize;
 
-                evaluation_scores.player_mobility_eval[player_mobility as usize] 
-                    // += (-2f64 * diff_eval_score as f64  * learning_rate / 100f64 ) as i16;
-                    += -2f64 * diff_eval_score * learning_rate / 100f64;
+                evaluation_scores.mobility_eval[mobility] +=
+                    - 2f64 * diff_eval_score * learning_rate 
+                    - 2f64 * lambda * evaluation_scores.mobility_eval[mobility];
                     
-                evaluation_scores.opponent_mobility_eval[opponent_mobility as usize] 
-                    += -2f64 * diff_eval_score * learning_rate / 100f64;
-                
-                evaluation_scores.const_eval
-                    += -2f64 * diff_eval_score * learning_rate / 100f64;
+                evaluation_scores.const_eval +=
+                    - 2f64 * diff_eval_score * learning_rate
+                    - 2f64 * lambda * evaluation_scores.const_eval;
 
                 error_sum[move_count] += error;
             }
@@ -200,7 +197,7 @@ fn supervised_learning(evaluator: &mut EvaluatorForLearn) {
             break;
         }
 
-        if learn_count % 100 == 0 {evaluator.write_file();}
+        // evaluator.write_file();
 
     }
 }
@@ -213,5 +210,5 @@ pub fn learning() {
     // let mut eval = EvaluatorForLearn::new();
     let mut eval = EvaluatorForLearn::read_file().unwrap();
     supervised_learning(&mut eval);
-    eval.write_file();
+    // eval.write_file();
 }

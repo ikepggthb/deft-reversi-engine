@@ -33,7 +33,7 @@ pub struct PutBoard {
 /// * `move_ordering_ffs`との違い
 ///   * `move_ordering_eval`は、評価値の高い順に並び替える。
 ///   * `move_ordering_ffs`は、相手の合法手が少ない順に並び替える。
-pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32, eval: &mut Evaluator) -> Vec<PutBoard>
+pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32, search: &mut Search) -> Vec<PutBoard>
 {
     let mut put_boards: Vec<PutBoard> = Vec::with_capacity(legal_moves.count_ones() as usize);
     
@@ -42,8 +42,11 @@ pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32, eval: &m
         legal_moves &= legal_moves - 1;
         let mut put_board = board.clone();
         put_board.put_piece_fast(put_place);
-        let e = -negaalpha_eval_for_move_ordering(&put_board, -SCORE_INF, SCORE_INF, lv-1,  eval);
-        put_boards.push(PutBoard{eval: e, board: put_board, put_place: put_place});
+        let mut eval = -negaalpha_eval(&put_board, -SCORE_INF, SCORE_INF, lv-1, search);
+        if search.get_t_table().unwrap().exists(board) {
+            eval += 60;
+        }
+        put_boards.push(PutBoard{eval: eval, board: put_board, put_place: put_place});
     }
 
     if put_boards.len() > 2 {
@@ -77,7 +80,7 @@ pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32, eval: &m
 ///   * `move_ordering_eval`は、評価値の高い順に並び替える。
 ///   * `move_ordering_ffs`は、相手の合法手が少ない順に並び替える。
 #[inline(always)]
-pub fn move_ordering_ffs(board: &Board, mut legal_moves: u64) -> Vec<PutBoard>
+pub fn move_ordering_ffs(board: &Board, mut legal_moves: u64, search: &mut Search) -> Vec<PutBoard>
 {
     let mut put_boards: Vec<PutBoard> = Vec::with_capacity(legal_moves.count_ones() as usize);
 
@@ -86,11 +89,15 @@ pub fn move_ordering_ffs(board: &Board, mut legal_moves: u64) -> Vec<PutBoard>
         legal_moves &= legal_moves - 1;
         let mut put_board = board.clone();
         put_board.put_piece_fast(put_place);
-        put_boards.push(PutBoard{eval: put_board.put_able().count_ones() as i32, board: put_board, put_place: put_place})
+        let mut eval =  -(put_board.put_able().count_ones() as i32);
+        if search.get_t_table().unwrap().exists(board) {
+            eval += 60;
+        }
+        put_boards.push(PutBoard{eval: eval, board: put_board, put_place: put_place})
     }
 
-    if put_boards.len() > 3{
-        put_boards.sort_unstable_by(|a, b| a.eval.partial_cmp(&b.eval).unwrap());
+    if put_boards.len() > 2{
+        put_boards.sort_unstable_by(|a, b| b.eval.partial_cmp(&a.eval).unwrap());
     }
     put_boards
 }
@@ -145,5 +152,13 @@ impl Search<'_> {
             origin_board: board.clone(),
             eval_func: evaluator
         }
+    }
+    pub fn get_t_table(&self) -> Option<&TranspositionTable>
+    {
+        self.t_table.as_ref()
+    }
+    pub fn get_mut_t_table(&mut self) -> Option<&mut TranspositionTable>
+    {
+        self.t_table.as_mut()
     }
 }

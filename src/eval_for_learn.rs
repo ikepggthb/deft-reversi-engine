@@ -9,8 +9,7 @@ use crate::board::*;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct EvaluationScoresForLearn {
     pub pattern_eval: Vec<Vec<f64>>,
-    pub player_mobility_eval: Vec<f64>,
-    pub opponent_mobility_eval: Vec<f64>,
+    pub mobility_eval: Vec<f64>,
     pub const_eval: f64
 }
 
@@ -28,9 +27,19 @@ pub struct EvaluatorForLearn {
 impl Default for EvaluationScoresForLearn {
     fn default() -> Self {        
         Self{
-            pattern_eval: vec![vec![0.0 ;N_FEATURE_MAX];N_PATTERN],
-            player_mobility_eval: vec![0.0; N_MOBILITY_MAX],
-            opponent_mobility_eval: vec![0.0; N_MOBILITY_MAX],
+            pattern_eval: vec![
+                vec![0.0;N_FEATURE_POSITIONS[0]],
+                vec![0.0;N_FEATURE_POSITIONS[1]],
+                vec![0.0;N_FEATURE_POSITIONS[2]],
+                vec![0.0;N_FEATURE_POSITIONS[3]],
+                vec![0.0;N_FEATURE_POSITIONS[4]],
+                vec![0.0;N_FEATURE_POSITIONS[5]],
+                vec![0.0;N_FEATURE_POSITIONS[6]],
+                vec![0.0;N_FEATURE_POSITIONS[7]],
+                vec![0.0;N_FEATURE_POSITIONS[8]],
+                vec![0.0;N_FEATURE_POSITIONS[9]],
+                vec![0.0;N_FEATURE_POSITIONS[10]]],
+            mobility_eval: vec![0.0; N_MOBILITY_MAX],
             const_eval: 0.0,
         } 
     }
@@ -98,15 +107,12 @@ impl EvaluatorForLearn {
             evaluation += e[f[3] as usize];
         }
 
-        let player_mobility = board.put_able().count_ones();
-        let opponent_mobility = {
-            let mut b = board.clone();
-            b.next_turn ^= 1;
-            b.put_able().count_ones()
-        };
-
-        evaluation += eval_scores.player_mobility_eval[player_mobility as usize];
-        evaluation += eval_scores.opponent_mobility_eval[opponent_mobility as usize];
+        let mobility = 
+            N_MOBILITY_BASE 
+            + board.put_able().count_ones() as usize 
+            - board.opponent_put_able().count_ones() as usize;
+        
+        evaluation += eval_scores.mobility_eval[mobility];
         evaluation += eval_scores.const_eval;
 
         evaluation 
@@ -127,19 +133,22 @@ impl EvaluatorForLearn {
         let mut e = eval::Evaluator::new();
         for i in 0..2 {
             for j in 0..N_PHASE {
-                let ei16 = &mut e.eval[i][j];
-                let ef64 = &self.eval[i][j];
+                let ei16: &mut crate::EvaluationScores = &mut e.eval[i][j];
+                let ef64: &EvaluationScoresForLearn = &self.eval[i][j];
 
-                for pi in 0..N_PATTERN {
-                    for fi in 0..N_FEATURE_MAX {
-                        ei16.pattern_eval[pi][fi] = (ef64.pattern_eval[pi][fi] * SCORE_RATE as f64) as i16;
+                debug_assert_eq!(ei16.pattern_eval.len(), ef64.pattern_eval.len(), "ei16.pattern_eval and ef64.pattern_eval have different lengths");
+                for (ei16_p, ef64_p) in ei16.pattern_eval.iter_mut().zip(ef64.pattern_eval.iter()) {
+                    debug_assert_eq!(ei16_p.len(), ef64_p.len(), "The features of ei16.pattern_eval and The features of ef64.pattern_eval have different lengths");
+                    for (ei16_f, &ef64_f) in ei16_p.iter_mut().zip(ef64_p.iter()) {
+                        *ei16_f = (ef64_f * SCORE_RATE as f64) as i16;
                     }
                 }
 
-                for mi in 0..N_MOBILITY_MAX {
-                     ei16.player_mobility_eval[mi] = (ef64.player_mobility_eval[mi] * (SCORE_RATE as f64)) as i16;
-                     ei16.opponent_mobility_eval[mi] = (ef64.opponent_mobility_eval[mi] * SCORE_RATE as f64) as i16;
+                debug_assert_eq!(ei16.mobility_eval.len(), ef64.mobility_eval.len(), "ei16.mobility_eval and ef64.mobility_eval have different lengths");
+                for (ei16_m, &ef64_m) in ei16.mobility_eval.iter_mut().zip(ef64.mobility_eval.iter()) {
+                    *ei16_m = (ef64_m * SCORE_RATE as f64) as i16;
                 }
+
                 ei16.const_eval = (ef64.const_eval * (SCORE_RATE as f64)) as i16;
             }
         }

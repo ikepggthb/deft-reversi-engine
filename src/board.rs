@@ -463,7 +463,7 @@ impl Board {
     }
 
     #[inline(always)]
-    fn piece_count(&self) -> i32
+    pub fn piece_count(&self) -> i32
     {
         (self.bit_board[0] | self.bit_board[1]).count_ones() as i32
     }

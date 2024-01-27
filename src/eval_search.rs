@@ -13,61 +13,6 @@ const SWITCH_NEGAALPHA_SEARCH_LEVEL: i32 = 6;
 
 /// NegaAlpha法を用いて、オセロの盤面の評価値を計算する。
 ///
-/// 探索の状態を追跡する `Search` オブジェクトへ参照を必要としない。
-/// move_orderingで使用される。
-/// 
-/// # 引数
-/// * `board`  - 評価するオセロの盤面を表す `Board` オブジェクトの参照。
-/// * `alpha`  - 探索の下限値を示すアルファ値。
-/// * `beta`   - 探索の上限値を示すベータ値。
-/// * `lv`     - 探索レベル (あと何手先まで読むか)
-///
-/// # 戻り値
-/// * 探索結果として計算された盤面のスコアを表す整数値。
-///   スコアは現在のプレイヤーから見た盤面のスコアを表す。
-///
-pub fn negaalpha_eval_for_move_ordering(board: &Board, mut alpha: i32, beta: i32, lv: i32, eval: &mut Evaluator) -> i32
-{    
-    if lv <= 0 {
-        // return simplest_eval(board);
-        return  eval.clac_features_eval(board);
-    }
-
-    let mut legal_moves = board.put_able();
-
-    // 合法手がない
-    if legal_moves == 0 {
-        let mut board = board.clone();
-        board.next_turn ^= 1; //pass
-        if board.put_able() == 0 { // passしても置くところがない == ゲーム終了
-            board.next_turn ^= 1;
-            return  eval.clac_features_eval(&board);
-        }
-        return -negaalpha_eval_for_move_ordering(&board, -beta, -alpha, lv, eval);
-    }
-    
-    // 探索範囲: [alpha, beta]
-    let mut best_score = -SCORE_INF;
-
-    while legal_moves != 0 {
-        let mut current_board = board.clone();
-        let put_place = (!legal_moves + 1) & legal_moves;
-        legal_moves &= legal_moves - 1; // bitを削除
-        current_board.put_piece_fast(put_place);
-        let score = -negaalpha_eval_for_move_ordering(&current_board, -beta, -alpha, lv - 1, eval);
-        if score >= beta {
-            return score;
-        }
-        if score > alpha {alpha = score};
-        if score > best_score {best_score = score}; 
-    }
-
-    best_score
-}
-
-
-/// NegaAlpha法を用いて、オセロの盤面の評価値を計算する。
-///
 /// 探索速度を向上させるため、葉に近いノードで使用される。
 /// 
 /// # 引数
@@ -172,7 +117,7 @@ pub fn nws_eval_simple(board: &Board, mut alpha: i32, lv: i32, search: &mut Sear
     search.node_count += 1;
 
     // move ordering
-    let put_boards = move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH, search.eval_func);
+    let put_boards = move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH, search);
 
     let mut this_node_alpha = alpha;
     let mut best_score = i32::MIN;
@@ -242,7 +187,7 @@ pub fn pvs_eval_simple(board: &Board, mut alpha: i32,mut beta: i32, lv: i32, sea
     search.node_count += 1;
 
     // move ordering
-    let put_boards =  move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH, search.eval_func);
+    let put_boards =  move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL_SIMPLE_SEARCH, search);
 
     let mut put_boards_iter = put_boards.iter();
     
@@ -331,12 +276,12 @@ pub fn nws_eval(board: &Board, mut alpha: i32, lv: i32, search: &mut Search) -> 
     search.node_count += 1;
 
 
-    if let Some(score) = t_table_cut_off(board, &mut alpha, &mut beta, search.t_table.as_mut().unwrap()) {
+    if let Some(score) = t_table_cut_off(board, &mut alpha, &mut beta, search.get_mut_t_table().unwrap()) {
         return score;
     }
     
     // move ordering
-    let put_boards = move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL, search.eval_func);
+    let put_boards = move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL, search);
 
     let mut this_node_alpha = alpha;
     let mut best_score = i32::MIN;
@@ -344,7 +289,7 @@ pub fn nws_eval(board: &Board, mut alpha: i32, lv: i32, search: &mut Search) -> 
         let current_put_board = &current_put_board.board;
         let score = -nws_eval(current_put_board, -beta, lv - 1, search);
         if score >= beta {
-            search.t_table.as_mut().unwrap().add(board, score, SCORE_INF);
+            search.get_mut_t_table().unwrap().add(board, score, SCORE_INF);
             return score;
         }
         if score > this_node_alpha {this_node_alpha = score};
@@ -352,9 +297,9 @@ pub fn nws_eval(board: &Board, mut alpha: i32, lv: i32, search: &mut Search) -> 
     }
 
     if best_score > alpha {
-        search.t_table.as_mut().unwrap().add(board, best_score, best_score);
+        search.get_mut_t_table().unwrap().add(board, best_score, best_score);
     } else {
-        search.t_table.as_mut().unwrap().add(board, -SCORE_INF, best_score);
+        search.get_mut_t_table().unwrap().add(board, -SCORE_INF, best_score);
     }
 
     best_score
@@ -448,21 +393,21 @@ pub fn pvs_eval ( board     : &Board,
     //     これは重大なプログラムの論理エラーを示している可能性があるため、
     //     むしろパニックによって即座に検出されるべきである。
 
-    // 2. `search.t_table.as_mut().unwrap()`を、
+    // 2. `search.get_mut_t_table().unwrap()`を、
     // `&mut TranspositionTable`として変数に保存して使用しない理由
-    //     search.t_table.as_mut().unwrap()を、
+    //     search.get_mut_t_table().unwrap()を、
     //     "&mut TranspositionTable"として変数に保存して使用することはできない。
     //     なぜなら、 次の盤面を探索する際に、&mut Searchを渡さなければならないからである。
     //     Rustの所有権システムの仕様より、
     //     Search 構造体の TranspositionTable フィールドに対する可変な参照が存在する間、
     //     同じ Search インスタンスに対しての可変な参照を作成することができない
 
-    if let Some(score) = t_table_cut_off(board, &mut alpha, &mut beta, search.t_table.as_mut().unwrap()) {
+    if let Some(score) = t_table_cut_off(board, &mut alpha, &mut beta, search.get_mut_t_table().unwrap()) {
         return score;
     }
 
     // move ordering
-    let put_boards =  move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search.eval_func);
+    let put_boards =  move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL,  search);
 
     let mut put_boards_iter = put_boards.iter();
     
@@ -473,7 +418,7 @@ pub fn pvs_eval ( board     : &Board,
     let first_child_board = put_boards_iter.next().unwrap();
     best_score =  -pvs_eval(&first_child_board.board, -beta, -this_node_alpha, lv - 1, search);
     if best_score >= beta { 
-        search.t_table.as_mut().unwrap().add(board, best_score, SCORE_INF);
+        search.get_mut_t_table().unwrap().add(board, best_score, SCORE_INF);
         return best_score;
     }
     if best_score > this_node_alpha { this_node_alpha = best_score};
@@ -483,7 +428,7 @@ pub fn pvs_eval ( board     : &Board,
         let put_board = &put_board.board;
         let mut score = -nws_eval( put_board, -this_node_alpha - 1, lv - 1, search);
         if score >= beta {
-            search.t_table.as_mut().unwrap().add(board, score, SCORE_INF);
+            search.get_mut_t_table().unwrap().add(board, score, SCORE_INF);
             return score;
         }
         if score > best_score {
@@ -491,7 +436,7 @@ pub fn pvs_eval ( board     : &Board,
             if score > this_node_alpha {this_node_alpha = score};
             score = -pvs_eval(put_board, -beta, -this_node_alpha, lv - 1, search);
             if score >= beta { 
-                search.t_table.as_mut().unwrap().add(board, score, SCORE_INF);
+                search.get_mut_t_table().unwrap().add(board, score, SCORE_INF);
                 return score;
              }
              best_score = score;
@@ -500,9 +445,9 @@ pub fn pvs_eval ( board     : &Board,
     }
 
     if best_score > alpha { // alpha < best_score < beta
-        search.t_table.as_mut().unwrap().add(board, best_score, best_score);
+        search.get_mut_t_table().unwrap().add(board, best_score, best_score);
     } else { // best_score <= alpha
-        search.t_table.as_mut().unwrap().add(board, -SCORE_INF, best_score);
+        search.get_mut_t_table().unwrap().add(board, -SCORE_INF, best_score);
     }
 
     best_score

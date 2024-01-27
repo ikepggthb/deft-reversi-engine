@@ -9,7 +9,7 @@ use crate::solver::*;
 use crate::eval::*;
 
 pub fn ffo_test(evaluator: &mut Evaluator) -> Result<(),  std::io::Error> {
-    for i in 40..=50 {
+    for i in 40..=59 {
         let filename = format!("ffotest/end{}.pos", i);
         let board = match read_ffo_test_files(&filename) {
             Ok(it) => it,
