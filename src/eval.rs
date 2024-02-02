@@ -151,73 +151,13 @@ use std::fs;
 use serde::{Deserialize, Serialize};
 use std::io::*;
 
-pub mod evaluator_const {
-    const A1: u8 = 0;
-    const B1: u8 = 1;
-    const C1: u8 = 2;
-    const D1: u8 = 3;
-    const E1: u8 = 4;
-    const F1: u8 = 5;
-    const G1: u8 = 6;
-    const H1: u8 = 7;
-    const A2: u8 = 8;
-    const B2: u8 = 9;
-    const C2: u8 = 10;
-    const D2: u8 = 11;
-    const E2: u8 = 12;
-    const F2: u8 = 13;
-    const G2: u8 = 14;
-    const H2: u8 = 15;
-    const A3: u8 = 16;
-    const B3: u8 = 17;
-    const C3: u8 = 18;
-    const D3: u8 = 19;
-    const E3: u8 = 20;
-    const F3: u8 = 21;
-    const G3: u8 = 22;
-    const H3: u8 = 23;
-    const A4: u8 = 24;
-    const B4: u8 = 25;
-    const C4: u8 = 26;
-    const D4: u8 = 27;
-    const E4: u8 = 28;
-    const F4: u8 = 29;
-    const G4: u8 = 30;
-    const H4: u8 = 31;
-    const A5: u8 = 32;
-    const B5: u8 = 33;
-    const C5: u8 = 34;
-    const D5: u8 = 35;
-    const E5: u8 = 36;
-    const F5: u8 = 37;
-    const G5: u8 = 38;
-    const H5: u8 = 39;
-    const A6: u8 = 40;
-    const B6: u8 = 41;
-    const C6: u8 = 42;
-    const D6: u8 = 43;
-    const E6: u8 = 44;
-    const F6: u8 = 45;
-    const G6: u8 = 46;
-    const H6: u8 = 47;
-    const A7: u8 = 48;
-    const B7: u8 = 49;
-    const C7: u8 = 50;
-    const D7: u8 = 51;
-    const E7: u8 = 52;
-    const F7: u8 = 53;
-    const G7: u8 = 54;
-    const H7: u8 = 55;
-    const A8: u8 = 56;
-    const B8: u8 = 57;
-    const C8: u8 = 58;
-    const D8: u8 = 59;
-    const E8: u8 = 60;
-    const F8: u8 = 61;
-    const G8: u8 = 62;
-    const H8: u8 = 63;
-    pub const TERMINATED: u8 = u8::MAX;
 
+use crate::board::*;
+
+pub mod evaluator_const {
+
+
+    use crate::board::*;
     const P3_0: i32 = 1;
     const P3_1: i32 = 3;
     const P3_2: i32 = 9;
@@ -236,9 +176,8 @@ pub mod evaluator_const {
     pub const N_PATTERN: usize = 11;
     pub const N_FEAUTURE: usize = N_PATTERN * 4;
 
-
-
     pub const SCORE_RATE: i32 = 128;
+    pub const SCORE_MAX : i32 = 64;
 
     pub struct CoordToFeature {
         pub n_pattern_square: u8,
@@ -384,7 +323,6 @@ pub mod evaluator_const {
     
 }
 
-use crate::board::*;
 use evaluator_const::*;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -504,14 +442,14 @@ impl Evaluator {
         self.clac_features(board);
         let mut e = self.clac_eval(board) as i32;
 
-        if e > 0 {e += 64;} else if e < 0 {e -= 64;}
+        if e > 0 {e += SCORE_RATE/2;} else if e < 0 {e -= SCORE_RATE/2;}
         e /= SCORE_RATE;
 
-        if e > 64 {e = 64;} else if e < -64 {e = -64;}     
+        if e > SCORE_MAX {e = SCORE_MAX;} else if e < -SCORE_MAX {e = -SCORE_MAX;}     
         e
     }
 
-    const EVAL_FILE_PATH: &str = "output_eval_i16.json";
+    const EVAL_FILE_PATH: &str = "res/eval.json";
     pub fn write_file(&self) -> std::io::Result<()>
     {
         // serialized

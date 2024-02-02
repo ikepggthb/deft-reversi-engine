@@ -3,14 +3,14 @@ use crate::eval::Evaluator;
 use crate::eval_search::*;
 use crate::t_table::*;
 
-const SCORE_INF: i32 = 100000i32;
+const SCORE_INF: i32 = i8::MAX as i32;
 
 
 /// 
 pub struct PutBoard {
     eval: i32,
     pub board: Board,
-    pub put_place: u64
+    pub put_place: u8
 }
 
 /// 評価関数に基づいて、手の順序を決定するための関数。
@@ -36,17 +36,25 @@ pub struct PutBoard {
 pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32, search: &mut Search) -> Vec<PutBoard>
 {
     let mut put_boards: Vec<PutBoard> = Vec::with_capacity(legal_moves.count_ones() as usize);
+    let tt_best_move =
+        if let Some(t) = search.t_table.get(board) {
+            1u64 << t.best_move
+        } else {
+            0u64
+        };
     
     while legal_moves != 0 {
         let put_place = (!legal_moves + 1) & legal_moves;
         legal_moves &= legal_moves - 1;
         let mut put_board = board.clone();
         put_board.put_piece_fast(put_place);
-        let mut eval = -negaalpha_eval(&put_board, -SCORE_INF, SCORE_INF, lv-1, search);
-        if search.get_t_table().unwrap().exists(board) {
-            eval += 60;
-        }
-        put_boards.push(PutBoard{eval: eval, board: put_board, put_place: put_place});
+        let eval = 
+        if tt_best_move == put_place {
+            SCORE_INF
+        } else {
+            -negaalpha_eval(&put_board, -SCORE_INF, SCORE_INF, lv-1, search)
+        };
+        put_boards.push(PutBoard{eval: eval, board: put_board, put_place: put_place.trailing_zeros() as u8});
     }
 
     if put_boards.len() > 2 {
@@ -89,11 +97,9 @@ pub fn move_ordering_ffs(board: &Board, mut legal_moves: u64, search: &mut Searc
         legal_moves &= legal_moves - 1;
         let mut put_board = board.clone();
         put_board.put_piece_fast(put_place);
-        let mut eval =  -(put_board.put_able().count_ones() as i32);
-        if search.get_t_table().unwrap().exists(board) {
-            eval += 60;
-        }
-        put_boards.push(PutBoard{eval: eval, board: put_board, put_place: put_place})
+
+        let eval = -(put_board.put_able().count_ones() as i32);
+        put_boards.push(PutBoard{eval: eval, board: put_board, put_place: put_place.trailing_zeros() as u8})
     }
 
     if put_boards.len() > 2{
@@ -112,7 +118,7 @@ pub fn get_put_boards(board: &Board, mut legal_moves: u64) -> Vec<PutBoard>
         legal_moves &= legal_moves - 1;
         let mut put_board = board.clone();
         put_board.put_piece_fast(put_place);
-        put_boards.push(PutBoard{eval: 0, board: put_board, put_place: put_place})
+        put_boards.push(PutBoard{eval: 0, board: put_board, put_place: put_place.trailing_zeros() as u8})
     }
 
     put_boards
@@ -121,16 +127,20 @@ pub fn get_put_boards(board: &Board, mut legal_moves: u64) -> Vec<PutBoard>
 #[inline(always)]
 pub fn t_table_cut_off(
     board   :       & Board,
-    alpha   :    &mut i32,
-    beta    :    &mut i32,
+    alpha   :       &mut i32,
+    beta    :       &mut i32,
+    lv      :       i32,
     t_table :       & TranspositionTable ) -> Option<i32>
 {
     if let Some(t) = t_table.get(board) {
-        if t.max <= *alpha {return Some(t.max);}
-        else if t.min >= *beta {return Some(t.min);}
-        else if t.max == t.min {return Some(t.max);}
-        if t.min > *alpha {*alpha = t.min};
-        if t.max < *beta {*beta = t.max};
+        if t.lv as i32 != lv {return None;}
+        let max = t.max as i32;
+        let min = t.min as i32;
+        if max <= *alpha {return Some(max);}
+        else if min >= *beta {return Some(min);}
+        else if max == min {return Some(max);}
+        if min > *alpha {*alpha = min};
+        if max < *beta {*beta = max};
     }
     None
 }
@@ -138,13 +148,13 @@ pub fn t_table_cut_off(
 pub struct Search<'a> {
     pub node_count: u64,
     pub leaf_node_count: u64,
-    pub t_table: Option<TranspositionTable>,
+    pub t_table: &'a mut TranspositionTable,
     pub origin_board: Board,
     pub eval_func: &'a mut Evaluator
 }
 
 impl Search<'_> {
-    pub fn new<'a>(board :&Board, t_table: Option<TranspositionTable>, evaluator: &'a mut Evaluator) -> Search <'a>{
+    pub fn new<'a>(board :&Board, t_table: &'a mut TranspositionTable, evaluator: &'a mut Evaluator) -> Search <'a>{
         Search{
             node_count: 0,
             leaf_node_count: 0,
@@ -152,13 +162,5 @@ impl Search<'_> {
             origin_board: board.clone(),
             eval_func: evaluator
         }
-    }
-    pub fn get_t_table(&self) -> Option<&TranspositionTable>
-    {
-        self.t_table.as_ref()
-    }
-    pub fn get_mut_t_table(&mut self) -> Option<&mut TranspositionTable>
-    {
-        self.t_table.as_mut()
     }
 }

@@ -15,6 +15,7 @@ pub use eval_simple::*;
 pub use solver::*;
 pub use board_manager::*;
 pub use eval::*;
+pub use t_table::*;
 
 
 

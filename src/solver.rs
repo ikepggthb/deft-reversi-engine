@@ -2,6 +2,7 @@ use crate::board::*;
 use crate::perfect_search::*;
 use crate::eval_search::*;
 use crate::search::*;
+use crate::t_table;
 use crate::t_table::*;
 use crate::eval::*;
 
@@ -16,7 +17,7 @@ pub enum SolverErr {
     NoMove,
 }
 
-const SCORE_INF: i32 = i32::MAX;
+const SCORE_INF: i32 = i8::MAX as i32;
 const MOVE_ORDERING_EVAL_LEVEL: i32 = 8;
 
 
@@ -45,14 +46,13 @@ const MOVE_ORDERING_EVAL_LEVEL: i32 = 8;
 /// }
 /// ```
 ///
-pub fn perfect_solver(board: &Board, print_log: bool, evaluator: &mut Evaluator) -> Result<SolverResult, SolverErr>
+pub fn perfect_solver(board: &Board, print_log: bool,t_table: &mut TranspositionTable, evaluator: &mut Evaluator) -> Result<SolverResult, SolverErr>
 {
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
     }
-
-    let mut search = Search::new(board, Some(TranspositionTable::new()), evaluator);
+    let mut search = Search::new(board, t_table, evaluator);
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
@@ -78,7 +78,7 @@ pub fn perfect_solver(board: &Board, print_log: bool, evaluator: &mut Evaluator)
     alpha = -pvs_perfect(&first_child_board.board, -beta, -alpha, &mut search);
     put_place_best_score = first_child_board.put_place;
     if print_log { 
-        println!("put: {}, nega scout score: {}",Board::move_bit_to_str(put_place_best_score).unwrap(), alpha);
+        println!("put: {}, nega scout score: {}",Board::move_bit_to_str(1 << put_place_best_score).unwrap(), alpha);
     };
 
     for put_board in put_boards_iter {
@@ -88,24 +88,24 @@ pub fn perfect_solver(board: &Board, print_log: bool, evaluator: &mut Evaluator)
         if score > alpha {
             alpha = score;
             if print_log { 
-                println!(" put: {}, null window score: {} => reserch [{},{}]",Board::move_bit_to_str(put_place).unwrap(), score, alpha, beta);
+                println!(" put: {}, null window score: {} => reserch [{},{}]",Board::move_bit_to_str(1 << put_place).unwrap(), score, alpha, beta);
             }
             score = -pvs_perfect(current_put_board, -beta, -alpha, &mut search);
             alpha = score;
             put_place_best_score = put_place;
         }
         if print_log { 
-            println!("put: {}, nega scout score: {}",Board::move_bit_to_str(put_place).unwrap(), score);
+            println!("put: {}, nega scout score: {}",Board::move_bit_to_str(1 << put_place).unwrap(), score);
         }
     }
 
     if print_log { 
-        println!("best move: {}, score: {}{}",Board::move_bit_to_str(put_place_best_score).unwrap(), if alpha > 0 {"+"} else {""},alpha);
+        println!("best move: {}, score: {}{}",Board::move_bit_to_str(1 << put_place_best_score).unwrap(), if alpha > 0 {"+"} else {""},alpha);
         println!("searched nodes: {}\nsearched leaf nodes: {}", search.node_count, search.leaf_node_count);
     }
 
     Ok(SolverResult{
-        best_move: put_place_best_score,
+        best_move: 1 << put_place_best_score,
         eval: alpha,
         node_count: search.node_count,
         leaf_node_count: search.leaf_node_count
@@ -130,14 +130,14 @@ pub fn perfect_solver(board: &Board, print_log: bool, evaluator: &mut Evaluator)
 /// # 注記
 /// 探索過程の進行状況や結果の詳細な出力が必要な場合は、print_logパラメータをtrueに設定してください。これにより、
 /// 各手の評価値や探索したノードの数など、探索に関する詳細な情報が出力されます。
-pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator) -> Result<SolverResult, SolverErr>
+pub fn winning_solver(board: &Board, print_log: bool, t_table: &mut TranspositionTable, evaluator : &mut Evaluator) -> Result<SolverResult, SolverErr>
 {
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
     }
 
-    let mut search = Search::new(board, Some(TranspositionTable::new()), evaluator);
+    let mut search = Search::new(board, t_table, evaluator);
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
@@ -166,7 +166,7 @@ pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator
         let score = -nws_perfect(current_put_board, -beta,&mut search);
         if score > 0 {
             if print_log { 
-                println!(" put: {}, Win",Board::move_bit_to_str(put_place).unwrap());
+                println!(" put: {}, Win",Board::move_bit_to_str(1 << put_place).unwrap());
             }
             if eval <= 0 {
                 put_place_best_score = put_place;
@@ -175,7 +175,7 @@ pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator
             break;
         } else if score < 0 {
             if print_log { 
-                println!(" put: {}, Lose",Board::move_bit_to_str(put_place).unwrap());
+                println!(" put: {}, Lose",Board::move_bit_to_str(1 << put_place).unwrap());
             }
         } else {
             draw_or_lose_board_index.push(i);
@@ -184,7 +184,7 @@ pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator
                 eval = 0
             };
             if print_log { 
-                println!(" put: {}, Draw or Lose", Board::move_bit_to_str(put_place).unwrap());
+                println!(" put: {}, Draw or Lose", Board::move_bit_to_str(1 << put_place).unwrap());
             }
         }
     }
@@ -200,7 +200,7 @@ pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator
             let score = -nws_perfect(current_put_board, -beta,&mut search);
             if score == 0 {
                 if print_log { 
-                    println!(" put: {}, Draw", Board::move_bit_to_str(put_place).unwrap());
+                    println!(" put: {}, Draw", Board::move_bit_to_str(1 << put_place).unwrap());
                 }
                 if eval < 0 {
                     put_place_best_score = put_place;
@@ -210,7 +210,7 @@ pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator
 
             } else if score < 0 {
                 if print_log { 
-                    println!(" put: {}, Lose",Board::move_bit_to_str(put_place).unwrap());
+                    println!(" put: {}, Lose",Board::move_bit_to_str(1 << put_place).unwrap());
                 }
                 eval = -1;
             } else {
@@ -224,12 +224,12 @@ pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator
     }
 
     if print_log { 
-        println!("best move: {}, score: {}",Board::move_bit_to_str(put_place_best_score).unwrap(), if eval > 0 {"Win"} else if eval < 0 {"Lose"} else {"Draw"});
+        println!("best move: {}, score: {}",Board::move_bit_to_str(1 << put_place_best_score).unwrap(), if eval > 0 {"Win"} else if eval < 0 {"Lose"} else {"Draw"});
         println!("searched nodes: {}\nsearched leaf nodes: {}", search.node_count, search.leaf_node_count);
     }
 
     Ok(SolverResult{
-        best_move: put_place_best_score,
+        best_move: 1 << put_place_best_score,
         eval,
         node_count: search.node_count,
         leaf_node_count: search.leaf_node_count
@@ -256,14 +256,14 @@ pub fn winning_solver(board: &Board, print_log: bool, evaluator : &mut Evaluator
 /// この関数は複雑なアルゴリズムを用いて盤面の探索を行うため、計算に時間がかかる可能性があります。
 /// 探索の深さ (lv) は、盤面の複雑さや求める精度に応じて適切に設定する必要があります。
 /// また、print_logパラメータをtrueに設定することで、探索の進行状況や結果の詳細がコンソールに出力されます。
-pub fn eval_solver(board: &Board, lv: i32, print_log: bool, evaluator : &mut Evaluator) -> Result<SolverResult, SolverErr>
+pub fn eval_solver(board: &Board, lv: i32, print_log: bool, t_table: &mut TranspositionTable, evaluator : &mut Evaluator) -> Result<SolverResult, SolverErr>
 {
     let legal_moves = board.put_able();
     if legal_moves == 0 {
         return Err(SolverErr::NoMove)
     }
 
-    let mut search = Search::new(board, Some(TranspositionTable::new()), evaluator);
+    let mut search = Search::new(board, t_table, evaluator);
     
     if print_log {
         println!("my_turn: {}", if board.next_turn == Board::BLACK {"Black"} else {"White"});
@@ -289,7 +289,7 @@ pub fn eval_solver(board: &Board, lv: i32, print_log: bool, evaluator : &mut Eva
     alpha = -pvs_eval(&first_child_board.board, -beta, -alpha, lv - 1, &mut search);
     put_place_best_score = first_child_board.put_place;
     if print_log { 
-        println!("put: {}, nega scout score: {}",Board::move_bit_to_str(put_place_best_score).unwrap(), alpha);
+        println!("put: {}, nega scout score: {}",Board::move_bit_to_str(1 << put_place_best_score).unwrap(), alpha);
     };
 
     for put_board in put_boards_iter {
@@ -299,24 +299,24 @@ pub fn eval_solver(board: &Board, lv: i32, print_log: bool, evaluator : &mut Eva
         if score > alpha {
             alpha = score;
             if print_log { 
-                println!(" put: {}, null window score: {} => reserch [{},{}]",Board::move_bit_to_str(put_place).unwrap(), score, alpha, beta);
+                println!(" put: {}, null window score: {} => reserch [{},{}]",Board::move_bit_to_str(1 << put_place).unwrap(), score, alpha, beta);
             }
             score = -pvs_eval(current_put_board, -beta, -alpha, lv - 1, &mut search);
             alpha = score;
             put_place_best_score = put_place;
         }
         if print_log { 
-            println!("put: {}, nega scout score: {}",Board::move_bit_to_str(put_place).unwrap(), score);
+            println!("put: {}, nega scout score: {}",Board::move_bit_to_str(1 << put_place).unwrap(), score);
         }
     }
 
     if print_log { 
-        println!("best move: {}, score: {}{}",Board::move_bit_to_str(put_place_best_score).unwrap(), if alpha > 0 {"+"} else {""},alpha);
+        println!("best move: {}, score: {}{}",Board::move_bit_to_str(1 << put_place_best_score).unwrap(), if alpha > 0 {"+"} else {""},alpha);
         println!("searched nodes: {}\nsearched leaf nodes: {}", search.node_count, search.leaf_node_count);
     }
     
     Ok(SolverResult{
-        best_move: put_place_best_score,
+        best_move: 1 << put_place_best_score,
         eval: alpha,
         node_count: search.node_count,
         leaf_node_count: search.leaf_node_count

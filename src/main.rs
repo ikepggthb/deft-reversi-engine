@@ -12,6 +12,7 @@ mod learn;
 mod ffo_test;
 mod eval_for_learn;
 
+
 // mod game;
 // ---
 
@@ -24,8 +25,6 @@ use eval::*;
 fn main () {
 
     // learning();
-
-    let mut eval_func = Evaluator::read_file().unwrap();
-    ffo_test(&mut eval_func);
+    ffo_test();
 
 }

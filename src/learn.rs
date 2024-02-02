@@ -126,7 +126,7 @@ fn supervised_learning(evaluator: &mut EvaluatorForLearn) {
     let lambda = 0.000002;
     let mut training_data = Vec::new();
     for i in 0..200 {
-        let filename = format!("0000_egaroucid_6_3_0_lv11/0000{i:0>3}.txt");
+        let filename = format!("data/training_data/0000_egaroucid_6_3_0_lv11/0000{i:0>3}.txt");
         training_data.append(&mut gen_training_data(&filename));
     }
     println!("train data total (Number of matches) : {}", training_data.len());

@@ -118,7 +118,7 @@ impl EvaluatorForLearn {
         evaluation 
     }
 
-    const EVAL_FILE_PATH: &str = "output_eval.json";
+    const EVAL_FILE_PATH: &str = "res/eval_intermediate_data.json";
     pub fn write_file(&self) -> std::io::Result<()>
     {
         // serialized
