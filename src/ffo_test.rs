@@ -4,13 +4,16 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-use crate::board::*;
+use crate::{board::*, t_table::*};
 use crate::solver::*;
 use crate::eval::*;
 
-pub fn ffo_test(evaluator: &mut Evaluator) -> Result<(),  std::io::Error> {
-    for i in 40..=59 {
-        let filename = format!("ffotest/end{}.pos", i);
+pub fn ffo_test() -> Result<(),  std::io::Error> {
+
+    let mut evaluator = Evaluator::read_file().unwrap();
+    let mut t = TranspositionTable::new();
+    for i in 40..=50 {
+        let filename = format!("data/ffo_test/end{}.pos", i);
         let board = match read_ffo_test_files(&filename) {
             Ok(it) => it,
             Err(err) => {
@@ -23,7 +26,7 @@ pub fn ffo_test(evaluator: &mut Evaluator) -> Result<(),  std::io::Error> {
 
         let now = time::Instant::now();
         let solver_result = 
-            match perfect_solver(&board, true, evaluator) {
+            match perfect_solver(&board, true,&mut t, &mut evaluator) {
                 Ok(result) => result,
                 Err(e) => {
                     eprintln!("Error occurred in perfect solver.");
