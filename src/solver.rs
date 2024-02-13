@@ -304,7 +304,6 @@ pub fn eval_solver(board: &Board, lv: i32, selectivity_lv: i32, print_log: bool,
     
     
     if lv > 6 {
-        pvs_eval(board, -SCORE_INF, SCORE_INF, lv - 5, &mut search);
         pvs_eval(board, -SCORE_INF, SCORE_INF, lv - 3, &mut search);
     }
 
@@ -312,7 +311,7 @@ pub fn eval_solver(board: &Board, lv: i32, selectivity_lv: i32, print_log: bool,
         if lv - 3 <= 0 {
             get_put_boards(board, legal_moves)
         } else {
-            move_ordering_eval(board, legal_moves, 1,  &mut search)
+            move_ordering_eval(board, legal_moves, MOVE_ORDERING_EVAL_LEVEL.min(lv - 4),  &mut search)
         };
     if print_log {println!("OK");};
 
