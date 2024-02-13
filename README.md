@@ -13,7 +13,6 @@ Deft Reversi Engineを搭載したオセロゲームは、以下のウェブサ�
 ソースコード: 
 [ Deft Reversi (Github)](https://github.com/ikepggthb/deft_web)
 
-
 ## 使用した技術
  - bitboard
  - negascout探索 (PVS)
@@ -26,7 +25,7 @@ Deft Reversi Engineを搭載したオセロゲームは、以下のウェブサ�
      - 終盤で使用される
    - 反復深化探索
      - キラー応手を置換表に保存し、次の探索に利用
- - 機械学習(線形回帰)で学習した評価関数
+ - 機械学習(線形回帰)を用いた評価関数
    - 学習データは、Egaroucid 自己対戦の棋譜を使用
      - https://www.egaroucid.nyanyan.dev/ja/technology/transcript/
    - 特徴量として盤面の部分パターンと、合法手数差を使用した。
@@ -158,7 +157,6 @@ Deft Reversi Engineを搭載したオセロゲームは、以下のウェブサ�
             X.......
 
             ```
-
 
 ## ライセンス
 このプロジェクトは[MIT License](https://opensource.org/license/mit/)の下で公開されています。
