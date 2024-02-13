@@ -14,7 +14,7 @@ Deft Reversi Engineを搭載したオセロゲームは、以下のウェブサ�
 [ Deft Reversi (Github)](https://github.com/ikepggthb/deft_web)
 
 
-## 使用したアルゴリズム
+## 使用した技術
  - bitboard
  - negascout探索 (PVS)
  - 置換表
