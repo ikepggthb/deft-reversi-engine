@@ -1,7 +1,5 @@
 use crate::board::*;
-use crate::eval_search::pvs_eval;
 use crate::search::*;
-use crate::t_table::*;
 
 
 use crate::mpc::*;
@@ -27,8 +25,6 @@ const SWITCH_EMPTIES_NEGA_ALPHA: i32 = 6;
 const SWITCH_EMPTIES_MOVE_ORDER: i32 = 14;
 
 /// `pvs_perfect`, `nws_perfect`でのmove orderingにおいて、評価関数とalpha-beta探索を用いた`move_ordering_eval`を使用する場合の、探索の深さ
-const MOVE_ORDERING_EVAL_LEVEL: i32 = 2;
-
 const MOVE_ORDERING_EVAL_LEVEL_T: [i32; 61] = [
     0,
     0,  0,  0,  0,  0,  0,  0,  0,  1,  1,

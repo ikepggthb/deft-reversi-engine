@@ -1,7 +1,5 @@
 use crate::board::*;
-use crate::eval::Evaluator;
 use crate::search::*;
-use crate::t_table::*;
 use crate::perfect_search::solve_score;
 
 use crate::mpc::*;
@@ -102,9 +100,9 @@ pub fn negaalpha_eval(board: &Board, mut alpha: i32, beta: i32, lv: i32, search:
 /// * 置換表を使用しない。
 /// * 最後の残り数手は、`negaalpha_eval`関数を使用した探索結果を用いる。
 ///     * 最後の残り数手は、`SWITCH_NEGAALPHA_SEARCH_LEVEL`で定義される。
-pub fn nws_eval_simple(board: &Board, mut alpha: i32, lv: i32, search: &mut Search) -> i32
+pub fn nws_eval_simple(board: &Board, alpha: i32, lv: i32, search: &mut Search) -> i32
 {
-    let mut beta = alpha + 1;
+    let beta = alpha + 1;
 
     if lv < SWITCH_NEGAALPHA_SEARCH_LEVEL {
         return negaalpha_eval(board, alpha, beta, lv, search);
@@ -174,7 +172,7 @@ pub fn nws_eval_simple(board: &Board, mut alpha: i32, lv: i32, search: &mut Sear
 /// * 最後の残り数手は、`negaalpha_eval`関数を使用した探索結果を用いる。
 ///     * 最後の残り数手は、`SWITCH_NEGAALPHA_SEARCH_LEVEL`で定義される。
 /// 
-pub fn pvs_eval_simple(board: &Board, mut alpha: i32,mut beta: i32, lv: i32, search: &mut Search) -> i32
+pub fn pvs_eval_simple(board: &Board, alpha: i32,beta: i32, lv: i32, search: &mut Search) -> i32
 {   
     #[cfg(debug_assertions)]
     assert!(alpha <= beta);

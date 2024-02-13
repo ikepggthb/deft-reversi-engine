@@ -30,7 +30,7 @@ pub fn simplest_eval (board: &Board) -> i32
         if ((opponent_board & m1[i]) | (player_board & m2[i])) == m1[i] {
             place_score -= 120;
         }
-        let side = (m1[i] | m2[i]);
+        let side = m1[i] | m2[i];
         if side & (player_board | opponent_board) == side {
             place_score += ((player_board & side).count_ones() as i32 - (opponent_board & side).count_ones() as i32)  * 20;
         }

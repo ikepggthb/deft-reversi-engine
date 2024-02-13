@@ -91,7 +91,7 @@ pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32, search: 
 ///   * `move_ordering_eval`は、評価値の高い順に並び替える。
 ///   * `move_ordering_ffs`は、相手の合法手が少ない順に並び替える。
 #[inline(always)]
-pub fn move_ordering_ffs(board: &Board, mut legal_moves: u64, search: &mut Search) -> Vec<PutBoard>
+pub fn move_ordering_ffs(board: &Board, mut legal_moves: u64, _search: &mut Search) -> Vec<PutBoard>
 {
     let mut put_boards: Vec<PutBoard> = Vec::with_capacity(legal_moves.count_ones() as usize);
 

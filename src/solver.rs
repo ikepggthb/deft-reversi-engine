@@ -1,9 +1,7 @@
 use crate::board::*;
-use crate::mpc::SELECTIVITY_LV_MAX;
 use crate::perfect_search::*;
 use crate::eval_search::*;
 use crate::search::*;
-use crate::t_table;
 use crate::t_table::*;
 use crate::eval::*;
 

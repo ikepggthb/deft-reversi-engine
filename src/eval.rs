@@ -157,16 +157,16 @@ use crate::board::*;
 pub mod evaluator_const {
     use crate::board::*;
     
-    const P3_0: i32 = 1;
-    const P3_1: i32 = 3;
-    const P3_2: i32 = 9;
-    const P3_3: i32 = 27;
-    const P3_4: i32 = 81;
-    const P3_5: i32 = 243;
-    const P3_6: i32 = 729;
-    const P3_7: i32 = 2187;
-    const P3_8: i32 = 6561;
-    const P3_9: i32 = 19683;
+    // const P3_0: i32 = 1;
+    // const P3_1: i32 = 3;
+    // const P3_2: i32 = 9;
+    // const P3_3: i32 = 27;
+    // const P3_4: i32 = 81;
+    // const P3_5: i32 = 243;
+    // const P3_6: i32 = 729;
+    // const P3_7: i32 = 2187;
+    // const P3_8: i32 = 6561;
+    // const P3_9: i32 = 19683;
     const P3_10: i32 = 59049;
     pub const P3: [i32; 11] = [1, 3, 9, 27, 81, 243, 729, 2187, 6561, 19683, 59049];
 

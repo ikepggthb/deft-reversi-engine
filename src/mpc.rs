@@ -229,11 +229,12 @@ pub fn multi_prob_cut(
         return ProbCutResult::FAIL;
     }
 
+    #[cfg(debug_assertions)]
     if search.selectivity_lv > SELECTIVITY_LV_MAX {
-
-        #[cfg(debug_assertions)]
         {panic!();}
-        
+    }
+    
+    if search.selectivity_lv > SELECTIVITY_LV_MAX {
         search.selectivity_lv = SELECTIVITY_LV_MAX;
     }
 
