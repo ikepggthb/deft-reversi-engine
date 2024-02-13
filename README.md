@@ -27,7 +27,7 @@ Deft Reversi Engineを搭載したオセロゲームは、以下のウェブサ�
    - 学習データは、Egaroucid 自己対戦の棋譜を使用
      - https://www.egaroucid.nyanyan.dev/ja/technology/transcript/
    - 特徴量として盤面の部分パターンと、合法手数差を使用した。
-   - 盤面の部分パターン
+   - 盤面の部分パターンは、以下を使用した。
         - Pattern 1:
             ```
             X.XXXX.X
@@ -132,7 +132,6 @@ Deft Reversi Engineを搭載したオセロゲームは、以下のウェブサ�
             ........
             ........
             ```
-        -------------------------
         - Pattern 10:
             ```
             ......X.
