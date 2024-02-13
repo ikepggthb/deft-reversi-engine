@@ -155,9 +155,8 @@ use std::io::*;
 use crate::board::*;
 
 pub mod evaluator_const {
-
-
     use crate::board::*;
+    
     const P3_0: i32 = 1;
     const P3_1: i32 = 3;
     const P3_2: i32 = 9;
@@ -298,7 +297,6 @@ pub mod evaluator_const {
             }
         ];
 
-
     pub const N_FEATURE_POSITIONS: [usize; N_PATTERN] = [
         P3[FEATURE_COORD[0].n_pattern_square as usize] as usize,
         P3[FEATURE_COORD[2].n_pattern_square as usize] as usize,
@@ -312,14 +310,12 @@ pub mod evaluator_const {
         P3[FEATURE_COORD[9].n_pattern_square as usize] as usize,
         P3[FEATURE_COORD[10].n_pattern_square as usize] as usize,
         ];
-
-
-
     
     pub const N_FEATURE_MAX: usize = P3_10 as usize;
     pub const N_MOBILITY_MAX: usize = 128;
     pub const N_MOBILITY_BASE: usize = 64;
     pub const N_PHASE: usize = 31;
+    pub const SCORE_INF: i32 = i8::MAX as i32;
     
 }
 
@@ -385,16 +381,18 @@ impl Evaluator {
         Self::default()
     }
 
+
+    #[inline(always)]
     pub fn clac_features(&mut self, board: &Board)
     {
         self.feature_bit = [[0; N_ROTATION]; N_PATTERN];
         
-        let p = board.bit_board[board.next_turn];
-        let o = board.bit_board[board.next_turn^1];
+        let p: u64 = board.bit_board[board.next_turn];
+        let o: u64 = board.bit_board[board.next_turn^1];
         
         for pattern in 0..N_PATTERN {
+            let fbit = &mut self.feature_bit[pattern];
             for rotation in 0..N_ROTATION {
-                let fbit = &mut self.feature_bit[pattern][rotation];
                 for coord_i in 0..FEATURE_COORD[pattern].n_pattern_square {
                     let coord = FEATURE_COORD[pattern].feature_coord[rotation][coord_i as usize];
                     
@@ -402,12 +400,13 @@ impl Evaluator {
                     if coord == TERMINATED {panic!()}
 
                     let color = 2 * (1 & p >> coord) + (1 & o >> coord);
-                    *fbit = *fbit * 3u16 + color as u16;
+                    fbit[rotation] = fbit[rotation] * 3u16 + color as u16;
                 }
             }
         }
     }
 
+    #[inline(always)]
     pub fn clac_eval(&self, board: &Board) -> i32
     {
         let move_count = board.move_count();
@@ -417,14 +416,14 @@ impl Evaluator {
         
         let eval_scores = &self.eval[board.next_turn][phase];
         for pattern in 0..N_PATTERN {
-            let e = &eval_scores.pattern_eval[pattern];
-            let f = &self.feature_bit[pattern];
+            // let e = &eval_scores.pattern_eval[pattern];
+            // let f = &self.feature_bit[pattern];
 
             // for each rotaion
-            evaluation += e[f[0] as usize] as i32 
-                            + e[f[1] as usize] as i32
-                            + e[f[2] as usize] as i32
-                            + e[f[3] as usize] as i32;
+            evaluation += eval_scores.pattern_eval[pattern][self.feature_bit[pattern][0] as usize] as i32 
+                            + eval_scores.pattern_eval[pattern][self.feature_bit[pattern][1] as usize] as i32
+                            + eval_scores.pattern_eval[pattern][self.feature_bit[pattern][2] as usize] as i32
+                            + eval_scores.pattern_eval[pattern][self.feature_bit[pattern][3] as usize] as i32;
         }
 
         let mobility = 
@@ -438,7 +437,10 @@ impl Evaluator {
         evaluation
     }
 
+
+    #[inline(always)]
     pub fn clac_features_eval(&mut self, board: &Board) -> i32{
+
         self.clac_features(board);
         let mut e = self.clac_eval(board) as i32;
 

@@ -11,7 +11,7 @@ mod eval;
 mod learn;
 mod ffo_test;
 mod eval_for_learn;
-
+mod mpc;
 
 // mod game;
 // ---
@@ -24,6 +24,8 @@ use eval::*;
 
 fn main () {
 
+    // npc_perfect_learn();
+    // npc_learn(10);
     // learning();
     ffo_test();
 

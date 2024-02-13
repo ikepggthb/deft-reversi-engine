@@ -8,6 +8,7 @@ pub struct TableData {
     pub max: i8,
     pub min: i8,
     pub lv: u8,
+    pub selectivity_lv : u8,
     pub best_move: u8
 }
 
@@ -19,12 +20,13 @@ impl TableData {
             max: 0,
             min: 0,
             lv: 0,
+            selectivity_lv: 0,
             best_move: u8::MAX,
         }
     }
 }
 
-const TABLE_SIZE: usize = 1 << 18;
+const TABLE_SIZE: usize = 1 << 20;
 pub struct TranspositionTable {
     table: Vec::<TableData>,
     rand_table: [u32; 1<<16]
@@ -73,7 +75,7 @@ impl TranspositionTable {
     }
 
     #[inline(always)]
-    pub fn add(&mut self, board: &Board, min: i32, max: i32, lv: i32,best_move: u8 ) {
+    pub fn add(&mut self, board: &Board, min: i32, max: i32, lv: i32, selectivity_lv: i32,best_move: u8 ) {
 
     #[cfg(debug_assertions)]
     {
@@ -89,6 +91,7 @@ impl TranspositionTable {
             max: max as i8,
             min: min as i8,
             lv: lv as u8,
+            selectivity_lv: selectivity_lv as u8,
             best_move
         }
     }
