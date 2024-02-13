@@ -1,6 +1,8 @@
 
-use crate::{board_manager::*, learn};
+use crate::search::Search;
+use crate::{board_manager::*, learn, search, Evaluator};
 use crate::{board::Board, perfect_search::solve_score};
+use crate::t_table::*;
 use serde::{Deserialize, Serialize};
 
 use crate::eval::evaluator_const::*;
@@ -211,4 +213,83 @@ pub fn learning() {
     let mut eval = EvaluatorForLearn::read_file().unwrap();
     supervised_learning(&mut eval);
     // eval.write_file();
+}
+
+use crate::{
+    eval_search::*,
+    perfect_search::*
+};
+
+pub fn npc_learn(lv: i32) {
+
+    let mut tt = TranspositionTable::new();
+    let mut evaluator = Evaluator::read_file().unwrap();
+
+    let mut training_data = Vec::new();
+    for i in 0..1 {
+        let filename = format!("data/training_data/0000_egaroucid_6_3_0_lv11/0000{i:0>3}.txt");
+        training_data.append(&mut gen_training_data(&filename));
+    }
+
+    const MPC_SEARCH_DEPTHS: [i32; 15] = [
+        0,
+        -1, -1, 1, 2, 1, 2, 3, 4, 3, 4,
+         3,  4, 5, 6];
+
+    for (i, training_datum) in training_data.iter().enumerate() {
+        for board in training_datum.bm.board_record.iter(){
+
+            let mut search = Search::new(board, 0, &mut tt, &mut evaluator);
+            let n_empties = board.empties_count();
+            let move_count = board.move_count();
+            if move_count <= 20 || MPC_SEARCH_DEPTHS[lv as usize] == 0 || n_empties <= lv { continue; }
+            let s = pvs_eval(board, -SCORE_INF, SCORE_INF, lv, &mut search);
+            let ps = pvs_eval(board, -SCORE_INF, SCORE_INF, MPC_SEARCH_DEPTHS[lv as usize], &mut search);
+            println!("{}, {}, {}, {}, {}", n_empties, lv, MPC_SEARCH_DEPTHS[lv as usize], s, ps);
+        }
+        if i > 1000 {break;}
+    }
+}
+
+pub fn npc_perfect_learn() {
+
+
+    let mut tt = TranspositionTable::new();
+    let mut evaluator = Evaluator::read_file().unwrap();
+
+    let mut training_data = Vec::new();
+    for i in 0..1 {
+        let filename = format!("data/training_data/0000_egaroucid_6_3_0_lv11/0000{i:0>3}.txt");
+        training_data.append(&mut gen_training_data(&filename));
+    }
+
+    use crate::mpc::PERFECT_SEARCH_MPC_SEARCH_PARAMS;
+    use crate::mpc::MpcParams;
+
+    println!("n_empties, Search depth for prob cut, Search score, Search score for prob cut ");
+
+    let evals: Vec<Vec<(i32, i32, i32)>> = vec![Vec::new();31];
+
+
+    for training_datum in training_data.iter() {
+        let s = [training_datum.score_black, -training_datum.score_black];
+        for board in training_datum.bm.board_record.iter(){
+            let n_empties = board.empties_count();
+            let mpc_search_lv = 
+                match &PERFECT_SEARCH_MPC_SEARCH_PARAMS[n_empties as usize] {
+                    Some(mpc_params) => {
+                        mpc_params.lv
+                    },
+                    None => {continue}
+                };
+            
+
+            if n_empties > 20 { continue; }
+            let mut search = Search::new(board, 0, &mut tt, &mut evaluator);
+
+            let s = s[board.next_turn];
+            let ps = pvs_eval(board, -SCORE_INF, SCORE_INF, mpc_search_lv, &mut search);
+            println!("{}, {}, {}, {}", n_empties,mpc_search_lv, s, ps);
+        }
+    }
 }

@@ -8,6 +8,7 @@ mod bit;
 mod search;
 mod t_table;
 mod eval;
+mod mpc;
 // ---
 
 pub use board::*;

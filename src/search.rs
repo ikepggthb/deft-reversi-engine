@@ -52,7 +52,10 @@ pub fn move_ordering_eval(board: &Board, mut legal_moves: u64, lv: i32, search: 
         if tt_best_move == put_place {
             SCORE_INF
         } else {
-            -negaalpha_eval(&put_board, -SCORE_INF, SCORE_INF, lv-1, search)
+            let main_search_selectivity_lv = search.selectivity_lv;
+            let e = -pvs_eval(&put_board, -SCORE_INF, SCORE_INF, lv-1, search);
+            search.selectivity_lv = main_search_selectivity_lv;
+            e
         };
         put_boards.push(PutBoard{eval: eval, board: put_board, put_place: put_place.trailing_zeros() as u8});
     }
@@ -130,10 +133,11 @@ pub fn t_table_cut_off(
     alpha   :       &mut i32,
     beta    :       &mut i32,
     lv      :       i32,
+    selectivity_lv: i32,
     t_table :       & TranspositionTable ) -> Option<i32>
 {
     if let Some(t) = t_table.get(board) {
-        if t.lv as i32 != lv {return None;}
+        if t.lv as i32 != lv || t.selectivity_lv as i32 != selectivity_lv {return None;}
         let max = t.max as i32;
         let min = t.min as i32;
         if max <= *alpha {return Some(max);}
@@ -146,21 +150,27 @@ pub fn t_table_cut_off(
 }
 
 pub struct Search<'a> {
-    pub node_count: u64,
-    pub leaf_node_count: u64,
+    pub eval_search_node_count: u64,
+    pub eval_search_leaf_node_count: u64,
+    pub perfect_search_node_count: u64,
+    pub perfect_search_leaf_node_count: u64,
     pub t_table: &'a mut TranspositionTable,
     pub origin_board: Board,
-    pub eval_func: &'a mut Evaluator
+    pub eval_func: &'a mut Evaluator,
+    pub selectivity_lv: i32,
 }
 
 impl Search<'_> {
-    pub fn new<'a>(board :&Board, t_table: &'a mut TranspositionTable, evaluator: &'a mut Evaluator) -> Search <'a>{
+    pub fn new<'a>(board :&Board, selectivity_lv: i32, t_table: &'a mut TranspositionTable, evaluator: &'a mut Evaluator) -> Search <'a>{
         Search{
-            node_count: 0,
-            leaf_node_count: 0,
-            t_table: t_table,
+            eval_search_node_count: 0,
+            eval_search_leaf_node_count: 0,
+            perfect_search_node_count: 0,
+            perfect_search_leaf_node_count: 0,
+            t_table,
             origin_board: board.clone(),
-            eval_func: evaluator
+            eval_func: evaluator,
+            selectivity_lv
         }
     }
 }
