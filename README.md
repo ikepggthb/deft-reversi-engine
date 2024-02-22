@@ -1,3 +1,10 @@
+# このリポジトリは、以下のリポジトリに移行しました。
+
+Deft Reversi
+
+https://github.com/ikepggthb/deft-reversi
+
+
 
 # Deft Reversi Engine
 
